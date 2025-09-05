@@ -4,6 +4,8 @@ const {
   loginController,
   refreshController,
   getMyProfileController,
+  googleLoginController,
+  facebookLoginController,
 } = require("../controllers/authController");
 
 const router = express.Router();
@@ -14,5 +16,7 @@ router.post("/signup", asyncHandler(signupController));
 router.post("/login", loginController);
 router.post("/refresh", refreshController);
 router.get("/me", authenticate, asyncHandler(getMyProfileController));
+router.post("/google-login", googleLoginController);
+router.post("/facebook-login", asyncHandler(facebookLoginController));
 
 module.exports = router;

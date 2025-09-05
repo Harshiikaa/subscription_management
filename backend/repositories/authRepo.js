@@ -19,3 +19,13 @@ exports.findByIdRepo = async (id) => {
 exports.getMyProfileRepo = async (userId) => {
   return await User.findOne({ _id: userId }).select("-password");
 };
+
+exports.createGoogleUserRepo = async ({ name, email, picture }) => {
+  return await User.create({
+    name,
+    email,
+    picture,
+    provider: "google",
+    password: null, // Google ke liye password nahi
+  });
+};

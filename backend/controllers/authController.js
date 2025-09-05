@@ -1,4 +1,10 @@
-const { signUpService, loginService, getMyProfileService } = require("../services/authService");
+const {
+  signUpService,
+  loginService,
+  getMyProfileService,
+  googleLoginService,
+  facebookLoginService,
+} = require("../services/authService");
 const AppError = require("../utils/errors");
 const { sendSuccess, sendError } = require("../utils/response");
 const { refreshService } = require("../services/authService");
@@ -11,12 +17,12 @@ exports.signupController = async (req, res) => {
 
 exports.loginController = async (req, res) => {
   const { email, password } = req.body;
- const user = await findUserByEmailWithPasswordRepo(email);
- if (!user) {
-   throw AppError.notFound("No user found with this email", "email");
- }
- const result = await loginService({ user, password });
- sendSuccess(res, result, "Login Successful", 201);
+  const user = await findUserByEmailWithPasswordRepo(email);
+  if (!user) {
+    throw AppError.notFound("No user found with this email", "email");
+  }
+  const result = await loginService({ user, password });
+  sendSuccess(res, result, "Login Successful", 201);
 };
 exports.refreshController = async (req, res) => {
   const { refreshToken } = req.body;
@@ -33,4 +39,17 @@ exports.getMyProfileController = async (req, res) => {
     throw AppError.notFound("No profile found with this user id", "id");
   }
   sendSuccess(res, profile, "User profile found successfully", 200);
+};
+
+exports.googleLoginController = async (req, res) => {
+  const { token } = req.body; // frontend se Firebase idToken aayega
+  const result = await googleLoginService(token);
+  return sendSuccess(res, result, "Google login successful", 200);
+};
+
+
+exports.facebookLoginController = async (req, res) => {
+  const { token } = req.body;
+  const result = await facebookLoginService(token);
+  return sendSuccess(res, result, "Facebook login successful", 200);
 };

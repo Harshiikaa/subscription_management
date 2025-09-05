@@ -13,7 +13,18 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: function () {
+        return this.provider !== "google"; // ✅ password sirf normal signup me required hoga
+      },
+      select: false,
+    },
+    picture: {
+      type: String,
+      default: null,
+    },
+    provider: {
+      type: String,
+      default: "local",
     },
     googleId: {
       type: String,

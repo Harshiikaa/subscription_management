@@ -50,22 +50,3 @@ exports.authorizeRoles = (...roles) => {
   };
 };
 
-exports.isOrgAdmin = (req, res, next) => {
-  const user = req.user; // populated by auth middleware
-  const { organizationId } = req.body;
-
-  // Check if the user is an admin
-  if (req.user.role !== "admin") {
-    throw AppError.forbidden("Only admins can perform this action");
-  }
-
-  // Check if the user belongs to the same organization
-  if (req.user.organizationId.toString() !== organizationId.toString()) {
-    throw AppError.forbidden(
-      "You can only create users within your own organization"
-    );
-  }
-
-  // If both checks pass, proceed to the next middleware
-  next();
-};
