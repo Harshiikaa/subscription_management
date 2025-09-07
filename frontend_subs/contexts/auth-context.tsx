@@ -1,6 +1,11 @@
 "use client";
 
-import { type AuthState, authenticateUser, registerUser } from "@/lib/auth";
+import {
+  type AuthState,
+  authenticateUser,
+  refreshAccessToken,
+  registerUser,
+} from "@/lib/auth";
 import { auth, facebookProvider, googleProvider } from "@/lib/firebase";
 import { signInWithPopup } from "firebase/auth";
 import type React from "react";
@@ -12,6 +17,7 @@ interface AuthContextType extends AuthState {
   logout: () => void;
   loginWithGoogle: () => Promise<boolean>;
   loginWithFacebook: () => Promise<boolean>;
+  refreshAccessToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,11 +51,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const user = authenticateUser(email, password);
-      if (user) {
-        localStorage.setItem("saas_user", JSON.stringify(user));
+      const result = await authenticateUser(email, password); // 👈 add await
+      if (result) {
+        localStorage.setItem("saas_user", JSON.stringify(result.user));
         setAuthState({
-          user,
+          user: result.user,
           isLoading: false,
           isAuthenticated: true,
         });
@@ -67,14 +73,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     name: string
   ): Promise<boolean> => {
     try {
-      const user = registerUser(email, password, name);
-      localStorage.setItem("saas_user", JSON.stringify(user));
-      setAuthState({
-        user,
-        isLoading: false,
-        isAuthenticated: true,
-      });
-      return true;
+      const result = await registerUser(email, password, name);
+      if (result) {
+        localStorage.setItem("saas_user", JSON.stringify(result.user));
+        setAuthState({
+          user: result.user,
+          isLoading: false,
+          isAuthenticated: true,
+        });
+        return true;
+      }
+      return false;
     } catch {
       return false;
     }
@@ -82,6 +91,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem("saas_user");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
     setAuthState({
       user: null,
       isLoading: false,
@@ -89,25 +100,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  // const loginWithGoogle = async (): Promise<boolean> => {
-  //   // Mock OAuth login - in real app, integrate with Google OAuth
-  //   const mockGoogleUser: User = {
-  //     id: "google_" + Date.now(),
-  //     email: "google.user@gmail.com",
-  //     name: "Google User",
-  //     role: "user",
-  //     isVerified: true,
-  //     createdAt: new Date().toISOString(),
-  //   }
-
-  //   localStorage.setItem("saas_user", JSON.stringify(mockGoogleUser))
-  //   setAuthState({
-  //     user: mockGoogleUser,
-  //     isLoading: false,
-  //     isAuthenticated: true,
-  //   })
-  //   return true
-  // }
   const loginWithGoogle = async (): Promise<boolean> => {
     try {
       // 1. Open Google popup
@@ -125,6 +117,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const data = await res.json();
       if (data.success) {
+        localStorage.setItem("accessToken", data.data.tokens.accessToken);
+        localStorage.setItem("refreshToken", data.data.tokens.refreshToken);
         localStorage.setItem("saas_user", JSON.stringify(data.data.user));
         setAuthState({
           user: data.data.user,
@@ -140,25 +134,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // const loginWithFacebook = async (): Promise<boolean> => {
-  //   // Mock OAuth login - in real app, integrate with Facebook OAuth
-  //   const mockFacebookUser: User = {
-  //     id: "facebook_" + Date.now(),
-  //     email: "facebook.user@facebook.com",
-  //     name: "Facebook User",
-  //     role: "user",
-  //     isVerified: true,
-  //     createdAt: new Date().toISOString(),
-  //   }
-
-  //   localStorage.setItem("saas_user", JSON.stringify(mockFacebookUser))
-  //   setAuthState({
-  //     user: mockFacebookUser,
-  //     isLoading: false,
-  //     isAuthenticated: true,
-  //   })
-  //   return true
-  // }
   const loginWithFacebook = async (): Promise<boolean> => {
     try {
       // 1. Open Facebook popup
@@ -176,6 +151,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const data = await res.json();
       if (data.success) {
+        localStorage.setItem("accessToken", data.data.tokens.accessToken);
+        localStorage.setItem("refreshToken", data.data.tokens.refreshToken);
         localStorage.setItem("saas_user", JSON.stringify(data.data.user));
         setAuthState({
           user: data.data.user,
@@ -200,6 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         loginWithGoogle,
         loginWithFacebook,
+        refreshAccessToken,
       }}
     >
       {children}

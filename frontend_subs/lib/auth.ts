@@ -1,5 +1,131 @@
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: "user" | "admin";
+  avatar?: string;
+  isVerified: boolean;
+  createdAt: string;
+}
 
+export interface AuthState {
+  user: User | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+}
 
+// -----------------------------
+// Real backend integration
+// -----------------------------
+
+const API_BASE = "http://localhost:5000/api/auth"; // adjust if needed
+
+// Login with email/password
+export const authenticateUser = async (
+  email: string,
+  password: string
+): Promise<{
+  user: User;
+  tokens: { accessToken: string; refreshToken: string };
+} | null> => {
+  try {
+    const res = await fetch(`${API_BASE}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      // Save token in localStorage
+      localStorage.setItem("accessToken", data.data.tokens.accessToken);
+      // for now ill save in localstorage for accessibility
+      localStorage.setItem("refreshToken", data.data.tokens.refreshToken);
+
+      // Return user object
+      return {
+        user: data.data.user as User,
+        tokens: data.data.tokens,
+      };
+    }
+    return null;
+  } catch (err) {
+    console.error("Login error:", err);
+    return null;
+  }
+};
+
+// Register new user
+export const registerUser = async (
+  email: string,
+  password: string,
+  name: string
+): Promise<{
+  user: User;
+  tokens?: { accessToken: string; refreshToken: string };
+} | null> => {
+  try {
+    const res = await fetch(`${API_BASE}/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, name }),
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      // If backend issues tokens on signup, save them
+      if (data.data.tokens) {
+        localStorage.setItem("accessToken", data.data.tokens.accessToken);
+        localStorage.setItem("refreshToken", data.data.tokens.refreshToken);
+      }
+
+      return {
+        user: data.data.user ?? data.data, // backend might send either user or raw data
+        tokens: data.data.tokens,
+      };
+    }
+    return null;
+  } catch (err) {
+    console.error("Register error:", err);
+    return null;
+  }
+};
+
+// Refresh access token
+export const refreshAccessToken = async (): Promise<string | null> => {
+  const refreshToken = localStorage.getItem("refreshToken");
+  if (!refreshToken) return null;
+
+  try {
+    const res = await fetch(`${API_BASE}/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      localStorage.setItem("accessToken", data.data.accessToken);
+      return data.data.accessToken;
+    }
+    return null;
+  } catch (err) {
+    console.error("Refresh token error:", err);
+    return null;
+  }
+};
+
+// -----------------------------
+// Utility functions
+// -----------------------------
+
+export const isAdmin = (user: User | null): boolean => {
+  return user?.role === "admin";
+};
+
+export const requireAuth = (user: User | null): boolean => {
+  return !!user;
+};
 
 // export interface User {
 //   id: string
