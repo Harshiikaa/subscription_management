@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { ROLE } = require("../constants/enums");
 
 const userSchema = new mongoose.Schema(
   {
@@ -14,9 +15,18 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: function () {
-        return this.provider !== "google"; // ✅ password sirf normal signup me required hoga
+        return !(this.provider === "google" || this.provider === "facebook");
       },
       select: false,
+    },
+    fcmToken: {
+      type: String,
+      default: null,
+    },
+    role: {
+      type: String,
+      enum: ROLE,
+      default: "user",
     },
     picture: {
       type: String,
