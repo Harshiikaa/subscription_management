@@ -17,9 +17,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-// Product interface with all required fields
+// Product interface matching backend
 interface Product {
-  id: string;
+  _id: string;
   name: string;
   description: string;
   image: string;
@@ -37,167 +37,14 @@ interface Product {
   availability?: string;
 }
 
-// Mock products data
-const mockProducts: Product[] = [
-  {
-    id: "1",
-    name: "Premium Cloud Storage",
-    description:
-      "Secure cloud storage solution with advanced encryption and seamless file synchronization across all your devices.",
-    image: "/placeholder.jpg",
-    url: "https://example.com/cloud-storage",
-    category: "Cloud Services",
-    price: {
-      monthly: 12.99,
-      yearly: 129.99,
-    },
-    features: [
-      "1TB secure cloud storage",
-      "End-to-end encryption",
-      "Cross-platform sync",
-      "File versioning",
-      "24/7 customer support",
-      "Mobile app access",
-    ],
-    isPopular: true,
-    rating: 4.8,
-    reviews: 1247,
-    tags: ["Storage", "Security", "Sync"],
-    availability: "Available",
-  },
-  {
-    id: "2",
-    name: "AI-Powered Analytics Dashboard",
-    description:
-      "Transform your data into actionable insights with our advanced AI analytics platform designed for modern businesses.",
-    image: "/placeholder.jpg",
-    url: "https://example.com/analytics",
-    category: "Analytics",
-    price: {
-      monthly: 29.99,
-      yearly: 299.99,
-    },
-    features: [
-      "Real-time data visualization",
-      "AI-powered insights",
-      "Custom dashboard creation",
-      "Data export capabilities",
-      "Team collaboration tools",
-      "API integration",
-    ],
-    rating: 4.6,
-    reviews: 892,
-    tags: ["AI", "Analytics", "Dashboard"],
-    availability: "Available",
-  },
-  {
-    id: "3",
-    name: "Professional Email Marketing Suite",
-    description:
-      "Create, send, and track email campaigns with our comprehensive marketing automation platform.",
-    image: "/placeholder.jpg",
-    url: "https://example.com/email-marketing",
-    category: "Marketing",
-    price: {
-      monthly: 19.99,
-      yearly: 199.99,
-    },
-    features: [
-      "Drag-and-drop email builder",
-      "Automated campaign sequences",
-      "Advanced segmentation",
-      "A/B testing tools",
-      "Detailed analytics",
-      "CRM integration",
-    ],
-    rating: 4.7,
-    reviews: 2156,
-    tags: ["Email", "Marketing", "Automation"],
-    availability: "Available",
-  },
-  {
-    id: "4",
-    name: "Secure VPN Service",
-    description:
-      "Protect your online privacy and access global content with our high-speed, secure VPN service.",
-    image: "/placeholder.jpg",
-    url: "https://example.com/vpn",
-    category: "Security",
-    price: {
-      monthly: 9.99,
-      yearly: 99.99,
-    },
-    features: [
-      "Unlimited bandwidth",
-      "200+ server locations",
-      "No-logs policy",
-      "Kill switch protection",
-      "Multi-device support",
-      "24/7 customer support",
-    ],
-    rating: 4.5,
-    reviews: 3421,
-    tags: ["VPN", "Privacy", "Security"],
-    availability: "Available",
-  },
-  {
-    id: "5",
-    name: "Project Management Pro",
-    description:
-      "Streamline your team's workflow with our comprehensive project management and collaboration platform.",
-    image: "/placeholder.jpg",
-    url: "https://example.com/project-management",
-    category: "Productivity",
-    price: {
-      monthly: 24.99,
-      yearly: 249.99,
-    },
-    features: [
-      "Task and project tracking",
-      "Team collaboration tools",
-      "Time tracking",
-      "Resource management",
-      "Custom workflows",
-      "Integration with 100+ apps",
-    ],
-    rating: 4.9,
-    reviews: 1876,
-    tags: ["Project Management", "Collaboration", "Productivity"],
-    availability: "Available",
-  },
-  {
-    id: "6",
-    name: "Advanced Video Conferencing",
-    description:
-      "Host professional meetings with crystal-clear video, advanced features, and enterprise-grade security.",
-    image: "/placeholder.jpg",
-    url: "https://example.com/video-conferencing",
-    category: "Communication",
-    price: {
-      monthly: 15.99,
-      yearly: 159.99,
-    },
-    features: [
-      "HD video and audio",
-      "Screen sharing",
-      "Recording capabilities",
-      "Virtual backgrounds",
-      "Breakout rooms",
-      "Meeting transcription",
-    ],
-    rating: 4.4,
-    reviews: 963,
-    tags: ["Video", "Communication", "Meetings"],
-    availability: "Available",
-  },
-];
-
 export default function ProductsPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">(
     "monthly"
   );
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -205,12 +52,35 @@ export default function ProductsPage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  if (isLoading) {
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/products`
+        );
+        const json = await res.json();
+        const items = json?.data?.items || json?.data || [];
+        setProducts(items);
+      } catch (e) {
+        console.error("Failed to load products", e);
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  if (isLoading || loadingProducts) {
     return <div>Loading...</div>;
   }
 
+  // const handleSubscribe = (productId: string) => {
+  //   router.push(`/checkout?product=${productId}&billing=${billingCycle}`);
+  // };
   const handleSubscribe = (productId: string) => {
-    router.push(`/checkout?product=${productId}&billing=${billingCycle}`);
+    router.push(
+      `/dashboard/subscriptions?from=products&product=${productId}&billing=${billingCycle}`
+    );
   };
 
   const handleViewProduct = (url: string) => {
@@ -257,12 +127,12 @@ export default function ProductsPage() {
 
         {/* Product Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-          {mockProducts.map((product) => {
+          {products.map((product) => {
             const price = product.price[billingCycle];
 
             return (
               <Card
-                key={product.id}
+                key={product._id}
                 className={`relative group hover:shadow-lg transition-shadow ${
                   product.isPopular ? "border-primary shadow-lg" : ""
                 }`}
@@ -387,7 +257,7 @@ export default function ProductsPage() {
                   <Button
                     className="flex-1"
                     variant={product.isPopular ? "default" : "outline"}
-                    onClick={() => handleSubscribe(product.id)}
+                    onClick={() => handleSubscribe(product._id)}
                   >
                     <ShoppingCart className="w-4 h-4 mr-2" />
                     Subscribe

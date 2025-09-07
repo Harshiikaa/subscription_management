@@ -104,7 +104,8 @@ const productSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false,
+      default: null,
     },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -157,7 +158,7 @@ productSchema.pre("save", async function (next) {
   // Only validate admin access if this is a new document or being updated
   if (this.isNew || this.isModified()) {
     const User = require("./user");
-    const creator = await User.findById(this.createdBy);
+    const creator = this.createdBy ? await User.findById(this.createdBy) : null;
     const updater = this.updatedBy ? await User.findById(this.updatedBy) : null;
 
     // Check if creator is admin (for new products)

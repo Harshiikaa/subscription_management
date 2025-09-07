@@ -3,7 +3,11 @@ const express = require("express");
 const cors = require("cors");
 const connectDB = require("./database/db");
 const authRoute = require("./routes/authRoute");
+const productRoute = require("./routes/productRoute");
+const subscriptionRoute = require("./routes/subscriptionRoute");
 const errorHandler = require("./middlewares/errorHandler");
+
+const { seedMockProductsService } = require("./services/productService");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -18,6 +22,8 @@ app.use(
 app.use(express.json());
 
 app.use("/api/auth", authRoute);
+app.use("/api/products", productRoute);
+app.use("/api/subscriptions", subscriptionRoute);
 
 // Basic route
 app.get("/", (req, res) => {
@@ -49,6 +55,13 @@ app.use((req, res) => {
 // --- Start
 (async () => {
   await connectDB();
+  // Auto-seed products (idempotent)
+  try {
+    await seedMockProductsService();
+    console.log("✅ Mock products seeded");
+  } catch (e) {
+    console.error("⚠️ Failed to seed products:", e.message);
+  }
   app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
   });
