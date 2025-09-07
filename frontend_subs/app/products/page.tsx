@@ -1,51 +1,44 @@
-"use client"
+"use client";
 
-import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { MainNav } from "@/components/navigation/main-nav"
-import { mockProducts, getUserSubscriptions } from "@/lib/mock-data"
-import { Check, Star, Users, HardDrive, Headphones } from "lucide-react"
+import { MainNav } from "@/components/navigation/main-nav";
 
 export default function ProductsPage() {
-  const { user, isAuthenticated, isLoading } = useAuth()
-  const router = useRouter()
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly")
+  // const { user, isAuthenticated, isLoading } = useAuth()
+  // const router = useRouter()
+  // const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly")
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/login")
-    }
-  }, [isAuthenticated, isLoading, router])
+  // useEffect(() => {
+  //   if (!isLoading && !isAuthenticated) {
+  //     router.push("/login")
+  //   }
+  // }, [isAuthenticated, isLoading, router])
 
-  if (isLoading) {
-    return <div>Loading...</div>
-  }
+  // if (isLoading) {
+  //   return <div>Loading...</div>
+  // }
 
-  const userSubscriptions = user ? getUserSubscriptions(user.id) : []
-  const activeSubscription = userSubscriptions.find((sub) => sub.status === "active")
+  // const userSubscriptions = user ? getUserSubscriptions(user.id) : []
+  // const activeSubscription = userSubscriptions.find((sub) => sub.status === "active")
 
-  const handleSubscribe = (productId: string) => {
-    router.push(`/checkout?product=${productId}&billing=${billingCycle}`)
-  }
+  // const handleSubscribe = (productId: string) => {
+  //   router.push(`/checkout?product=${productId}&billing=${billingCycle}`)
+  // }
 
   return (
     <div className="min-h-screen bg-background">
       <MainNav />
 
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-8">
+        <h1>This is empty for now</h1>
+        {/* <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-4 text-balance">Choose Your Plan</h1>
           <p className="text-xl text-muted-foreground text-pretty max-w-2xl mx-auto">
             Select the perfect plan for your needs. Upgrade or downgrade at any time.
           </p>
-        </div>
+        </div> */}
 
         {/* Billing Toggle */}
-        <div className="flex justify-center mb-8">
+        {/* <div className="flex justify-center mb-8">
           <div className="flex items-center space-x-4 bg-muted p-1 rounded-lg">
             <Button
               variant={billingCycle === "monthly" ? "default" : "ghost"}
@@ -65,10 +58,10 @@ export default function ProductsPage() {
               </Badge>
             </Button>
           </div>
-        </div>
+        </div> */}
 
         {/* Product Cards */}
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        {/* <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {mockProducts.map((product) => {
             const isCurrentPlan = activeSubscription?.productId === product.id
             const price = product.price[billingCycle]
@@ -143,10 +136,10 @@ export default function ProductsPage() {
               </Card>
             )
           })}
-        </div>
+        </div> */}
 
         {/* FAQ Section */}
-        <div className="mt-16 text-center">
+        {/* <div className="mt-16 text-center">
           <h2 className="text-2xl font-bold mb-4">Frequently Asked Questions</h2>
           <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto text-left">
             <div>
@@ -174,8 +167,8 @@ export default function ProductsPage() {
               </p>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
-  )
+  );
 }
