@@ -1,44 +1,221 @@
 "use client";
 
+import { useAuth } from "@/contexts/auth-context";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { MainNav } from "@/components/navigation/main-nav";
+import { ShoppingCart, Star, ExternalLink, Tag, Calendar, Users, Zap } from "lucide-react";
+import Image from "next/image";
+
+// Product interface with all required fields
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  image: string;
+  url: string;
+  category: string;
+  price: {
+    monthly: number;
+    yearly: number;
+  };
+  features: string[];
+  isPopular?: boolean;
+  rating?: number;
+  reviews?: number;
+  tags?: string[];
+  availability?: string;
+}
+
+// Mock products data
+const mockProducts: Product[] = [
+  {
+    id: "1",
+    name: "Premium Cloud Storage",
+    description: "Secure cloud storage solution with advanced encryption and seamless file synchronization across all your devices.",
+    image: "/placeholder.jpg",
+    url: "https://example.com/cloud-storage",
+    category: "Cloud Services",
+    price: {
+      monthly: 12.99,
+      yearly: 129.99,
+    },
+    features: [
+      "1TB secure cloud storage",
+      "End-to-end encryption",
+      "Cross-platform sync",
+      "File versioning",
+      "24/7 customer support",
+      "Mobile app access"
+    ],
+    isPopular: true,
+    rating: 4.8,
+    reviews: 1247,
+    tags: ["Storage", "Security", "Sync"],
+    availability: "Available"
+  },
+  {
+    id: "2",
+    name: "AI-Powered Analytics Dashboard",
+    description: "Transform your data into actionable insights with our advanced AI analytics platform designed for modern businesses.",
+    image: "/placeholder.jpg",
+    url: "https://example.com/analytics",
+    category: "Analytics",
+    price: {
+      monthly: 29.99,
+      yearly: 299.99,
+    },
+    features: [
+      "Real-time data visualization",
+      "AI-powered insights",
+      "Custom dashboard creation",
+      "Data export capabilities",
+      "Team collaboration tools",
+      "API integration"
+    ],
+    rating: 4.6,
+    reviews: 892,
+    tags: ["AI", "Analytics", "Dashboard"],
+    availability: "Available"
+  },
+  {
+    id: "3",
+    name: "Professional Email Marketing Suite",
+    description: "Create, send, and track email campaigns with our comprehensive marketing automation platform.",
+    image: "/placeholder.jpg",
+    url: "https://example.com/email-marketing",
+    category: "Marketing",
+    price: {
+      monthly: 19.99,
+      yearly: 199.99,
+    },
+    features: [
+      "Drag-and-drop email builder",
+      "Automated campaign sequences",
+      "Advanced segmentation",
+      "A/B testing tools",
+      "Detailed analytics",
+      "CRM integration"
+    ],
+    rating: 4.7,
+    reviews: 2156,
+    tags: ["Email", "Marketing", "Automation"],
+    availability: "Available"
+  },
+  {
+    id: "4",
+    name: "Secure VPN Service",
+    description: "Protect your online privacy and access global content with our high-speed, secure VPN service.",
+    image: "/placeholder.jpg",
+    url: "https://example.com/vpn",
+    category: "Security",
+    price: {
+      monthly: 9.99,
+      yearly: 99.99,
+    },
+    features: [
+      "Unlimited bandwidth",
+      "200+ server locations",
+      "No-logs policy",
+      "Kill switch protection",
+      "Multi-device support",
+      "24/7 customer support"
+    ],
+    rating: 4.5,
+    reviews: 3421,
+    tags: ["VPN", "Privacy", "Security"],
+    availability: "Available"
+  },
+  {
+    id: "5",
+    name: "Project Management Pro",
+    description: "Streamline your team's workflow with our comprehensive project management and collaboration platform.",
+    image: "/placeholder.jpg",
+    url: "https://example.com/project-management",
+    category: "Productivity",
+    price: {
+      monthly: 24.99,
+      yearly: 249.99,
+    },
+    features: [
+      "Task and project tracking",
+      "Team collaboration tools",
+      "Time tracking",
+      "Resource management",
+      "Custom workflows",
+      "Integration with 100+ apps"
+    ],
+    rating: 4.9,
+    reviews: 1876,
+    tags: ["Project Management", "Collaboration", "Productivity"],
+    availability: "Available"
+  },
+  {
+    id: "6",
+    name: "Advanced Video Conferencing",
+    description: "Host professional meetings with crystal-clear video, advanced features, and enterprise-grade security.",
+    image: "/placeholder.jpg",
+    url: "https://example.com/video-conferencing",
+    category: "Communication",
+    price: {
+      monthly: 15.99,
+      yearly: 159.99,
+    },
+    features: [
+      "HD video and audio",
+      "Screen sharing",
+      "Recording capabilities",
+      "Virtual backgrounds",
+      "Breakout rooms",
+      "Meeting transcription"
+    ],
+    rating: 4.4,
+    reviews: 963,
+    tags: ["Video", "Communication", "Meetings"],
+    availability: "Available"
+  }
+];
 
 export default function ProductsPage() {
-  // const { user, isAuthenticated, isLoading } = useAuth()
-  // const router = useRouter()
-  // const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly")
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
 
-  // useEffect(() => {
-  //   if (!isLoading && !isAuthenticated) {
-  //     router.push("/login")
-  //   }
-  // }, [isAuthenticated, isLoading, router])
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, isLoading, router]);
 
-  // if (isLoading) {
-  //   return <div>Loading...</div>
-  // }
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
-  // const userSubscriptions = user ? getUserSubscriptions(user.id) : []
-  // const activeSubscription = userSubscriptions.find((sub) => sub.status === "active")
+  const handleSubscribe = (productId: string) => {
+    router.push(`/checkout?product=${productId}&billing=${billingCycle}`);
+  };
 
-  // const handleSubscribe = (productId: string) => {
-  //   router.push(`/checkout?product=${productId}&billing=${billingCycle}`)
-  // }
+  const handleViewProduct = (url: string) => {
+    window.open(url, '_blank');
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <MainNav />
 
       <div className="container mx-auto px-4 py-8">
-        <h1>This is empty for now</h1>
-        {/* <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4 text-balance">Choose Your Plan</h1>
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold mb-4 text-balance">Our Products & Services</h1>
           <p className="text-xl text-muted-foreground text-pretty max-w-2xl mx-auto">
-            Select the perfect plan for your needs. Upgrade or downgrade at any time.
+            Discover our range of premium products and services designed to enhance your digital experience.
           </p>
-        </div> */}
+        </div>
 
         {/* Billing Toggle */}
-        {/* <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-8">
           <div className="flex items-center space-x-4 bg-muted p-1 rounded-lg">
             <Button
               variant={billingCycle === "monthly" ? "default" : "ghost"}
@@ -58,18 +235,17 @@ export default function ProductsPage() {
               </Badge>
             </Button>
           </div>
-        </div> */}
+        </div>
 
         {/* Product Cards */}
-        {/* <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
           {mockProducts.map((product) => {
-            const isCurrentPlan = activeSubscription?.productId === product.id
-            const price = product.price[billingCycle]
+            const price = product.price[billingCycle];
 
             return (
-              <Card key={product.id} className={`relative ${product.isPopular ? "border-primary shadow-lg" : ""}`}>
+              <Card key={product.id} className={`relative group hover:shadow-lg transition-shadow ${product.isPopular ? "border-primary shadow-lg" : ""}`}>
                 {product.isPopular && (
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
                     <Badge className="bg-primary text-primary-foreground">
                       <Star className="w-3 h-3 mr-1" />
                       Most Popular
@@ -77,75 +253,123 @@ export default function ProductsPage() {
                   </div>
                 )}
 
-                <CardHeader className="text-center">
-                  <CardTitle className="text-2xl">{product.name}</CardTitle>
-                  <CardDescription className="text-pretty">{product.description}</CardDescription>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold">${price}</span>
+                {/* Product Image */}
+                <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
+                  <Image
+                    src={product.image}
+                    alt={product.name}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute top-2 right-2">
+                    <Badge variant="secondary" className="bg-white/90 text-black">
+                      <Tag className="w-3 h-3 mr-1" />
+                      {product.category}
+                    </Badge>
+                  </div>
+                </div>
+
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-xl mb-2">{product.name}</CardTitle>
+                      <CardDescription className="text-sm mb-3">{product.description}</CardDescription>
+                    </div>
+                  </div>
+
+                  {/* Rating */}
+                  {product.rating && (
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-4 h-4 ${
+                              i < Math.floor(product.rating!) ? "text-yellow-400 fill-current" : "text-gray-300"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {product.rating} ({product.reviews} reviews)
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Price */}
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold">${price}</span>
                     <span className="text-muted-foreground">/{billingCycle === "monthly" ? "mo" : "yr"}</span>
                   </div>
                 </CardHeader>
 
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <Users className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                      <p className="text-sm font-medium">{product.maxUsers || "Unlimited"}</p>
-                      <p className="text-xs text-muted-foreground">Users</p>
+                  {/* Tags */}
+                  {product.tags && (
+                    <div className="flex flex-wrap gap-1">
+                      {product.tags.map((tag, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
                     </div>
-                    <div>
-                      <HardDrive className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                      <p className="text-sm font-medium">{product.storage}</p>
-                      <p className="text-xs text-muted-foreground">Storage</p>
-                    </div>
-                    <div>
-                      <Headphones className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                      <p className="text-sm font-medium">{product.support}</p>
-                      <p className="text-xs text-muted-foreground">Support</p>
-                    </div>
-                  </div>
+                  )}
 
+                  {/* Features */}
                   <div className="space-y-2">
-                    <p className="font-medium">Features included:</p>
-                    <ul className="space-y-2">
-                      {product.features.map((feature, index) => (
-                        <li key={index} className="flex items-center text-sm">
-                          <Check className="h-4 w-4 text-primary mr-2 flex-shrink-0" />
+                    <p className="font-medium text-sm">Key Features:</p>
+                    <ul className="space-y-1">
+                      {product.features.slice(0, 4).map((feature, index) => (
+                        <li key={index} className="flex items-center text-sm text-muted-foreground">
+                          <Zap className="h-3 w-3 text-primary mr-2 flex-shrink-0" />
                           {feature}
                         </li>
                       ))}
+                      {product.features.length > 4 && (
+                        <li className="text-xs text-muted-foreground">
+                          +{product.features.length - 4} more features
+                        </li>
+                      )}
                     </ul>
+                  </div>
+
+                  {/* Availability */}
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-muted-foreground">{product.availability}</span>
                   </div>
                 </CardContent>
 
-                <CardFooter>
-                  {isCurrentPlan ? (
-                    <Button className="w-full" disabled>
-                      Current Plan
-                    </Button>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      variant={product.isPopular ? "default" : "outline"}
-                      onClick={() => handleSubscribe(product.id)}
-                    >
-                      {activeSubscription ? "Switch Plan" : "Get Started"}
-                    </Button>
-                  )}
+                <CardFooter className="flex gap-2">
+                  <Button
+                    className="flex-1"
+                    variant={product.isPopular ? "default" : "outline"}
+                    onClick={() => handleSubscribe(product.id)}
+                  >
+                    <ShoppingCart className="w-4 h-4 mr-2" />
+                    Subscribe
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleViewProduct(product.url)}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Button>
                 </CardFooter>
               </Card>
-            )
+            );
           })}
-        </div> */}
+        </div>
 
         {/* FAQ Section */}
-        {/* <div className="mt-16 text-center">
+        <div className="mt-16 text-center">
           <h2 className="text-2xl font-bold mb-4">Frequently Asked Questions</h2>
           <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto text-left">
             <div>
-              <h3 className="font-semibold mb-2">Can I change my plan anytime?</h3>
+              <h3 className="font-semibold mb-2">How do I subscribe to a product?</h3>
               <p className="text-muted-foreground text-sm">
-                Yes, you can upgrade or downgrade your plan at any time. Changes take effect immediately.
+                Click the "Subscribe" button on any product card to start your subscription. You can choose between monthly or yearly billing.
               </p>
             </div>
             <div>
@@ -155,19 +379,19 @@ export default function ProductsPage() {
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-2">Is there a free trial?</h3>
+              <h3 className="font-semibold mb-2">Can I cancel my subscription anytime?</h3>
               <p className="text-muted-foreground text-sm">
-                Yes, all plans come with a 14-day free trial. No credit card required to start.
+                Yes, you can cancel your subscription at any time with no cancellation fees.
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-2">Can I cancel anytime?</h3>
+              <h3 className="font-semibold mb-2">Do you offer free trials?</h3>
               <p className="text-muted-foreground text-sm">
-                Absolutely. You can cancel your subscription at any time with no cancellation fees.
+                Most of our products come with a free trial period. Check individual product details for specific trial information.
               </p>
             </div>
           </div>
-        </div> */}
+        </div>
       </div>
     </div>
   );
