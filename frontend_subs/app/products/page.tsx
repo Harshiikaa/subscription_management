@@ -1,14 +1,21 @@
 "use client";
 
+import { MainNav } from "@/components/navigation/main-nav";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useAuth } from "@/contexts/auth-context";
+import { ExternalLink, ShoppingCart, Star, Tag, Zap } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { MainNav } from "@/components/navigation/main-nav";
-import { ShoppingCart, Star, ExternalLink, Tag, Calendar, Users, Zap } from "lucide-react";
-import Image from "next/image";
 
 // Product interface with all required fields
 interface Product {
@@ -35,7 +42,8 @@ const mockProducts: Product[] = [
   {
     id: "1",
     name: "Premium Cloud Storage",
-    description: "Secure cloud storage solution with advanced encryption and seamless file synchronization across all your devices.",
+    description:
+      "Secure cloud storage solution with advanced encryption and seamless file synchronization across all your devices.",
     image: "/placeholder.jpg",
     url: "https://example.com/cloud-storage",
     category: "Cloud Services",
@@ -49,18 +57,19 @@ const mockProducts: Product[] = [
       "Cross-platform sync",
       "File versioning",
       "24/7 customer support",
-      "Mobile app access"
+      "Mobile app access",
     ],
     isPopular: true,
     rating: 4.8,
     reviews: 1247,
     tags: ["Storage", "Security", "Sync"],
-    availability: "Available"
+    availability: "Available",
   },
   {
     id: "2",
     name: "AI-Powered Analytics Dashboard",
-    description: "Transform your data into actionable insights with our advanced AI analytics platform designed for modern businesses.",
+    description:
+      "Transform your data into actionable insights with our advanced AI analytics platform designed for modern businesses.",
     image: "/placeholder.jpg",
     url: "https://example.com/analytics",
     category: "Analytics",
@@ -74,17 +83,18 @@ const mockProducts: Product[] = [
       "Custom dashboard creation",
       "Data export capabilities",
       "Team collaboration tools",
-      "API integration"
+      "API integration",
     ],
     rating: 4.6,
     reviews: 892,
     tags: ["AI", "Analytics", "Dashboard"],
-    availability: "Available"
+    availability: "Available",
   },
   {
     id: "3",
     name: "Professional Email Marketing Suite",
-    description: "Create, send, and track email campaigns with our comprehensive marketing automation platform.",
+    description:
+      "Create, send, and track email campaigns with our comprehensive marketing automation platform.",
     image: "/placeholder.jpg",
     url: "https://example.com/email-marketing",
     category: "Marketing",
@@ -98,17 +108,18 @@ const mockProducts: Product[] = [
       "Advanced segmentation",
       "A/B testing tools",
       "Detailed analytics",
-      "CRM integration"
+      "CRM integration",
     ],
     rating: 4.7,
     reviews: 2156,
     tags: ["Email", "Marketing", "Automation"],
-    availability: "Available"
+    availability: "Available",
   },
   {
     id: "4",
     name: "Secure VPN Service",
-    description: "Protect your online privacy and access global content with our high-speed, secure VPN service.",
+    description:
+      "Protect your online privacy and access global content with our high-speed, secure VPN service.",
     image: "/placeholder.jpg",
     url: "https://example.com/vpn",
     category: "Security",
@@ -122,17 +133,18 @@ const mockProducts: Product[] = [
       "No-logs policy",
       "Kill switch protection",
       "Multi-device support",
-      "24/7 customer support"
+      "24/7 customer support",
     ],
     rating: 4.5,
     reviews: 3421,
     tags: ["VPN", "Privacy", "Security"],
-    availability: "Available"
+    availability: "Available",
   },
   {
     id: "5",
     name: "Project Management Pro",
-    description: "Streamline your team's workflow with our comprehensive project management and collaboration platform.",
+    description:
+      "Streamline your team's workflow with our comprehensive project management and collaboration platform.",
     image: "/placeholder.jpg",
     url: "https://example.com/project-management",
     category: "Productivity",
@@ -146,17 +158,18 @@ const mockProducts: Product[] = [
       "Time tracking",
       "Resource management",
       "Custom workflows",
-      "Integration with 100+ apps"
+      "Integration with 100+ apps",
     ],
     rating: 4.9,
     reviews: 1876,
     tags: ["Project Management", "Collaboration", "Productivity"],
-    availability: "Available"
+    availability: "Available",
   },
   {
     id: "6",
     name: "Advanced Video Conferencing",
-    description: "Host professional meetings with crystal-clear video, advanced features, and enterprise-grade security.",
+    description:
+      "Host professional meetings with crystal-clear video, advanced features, and enterprise-grade security.",
     image: "/placeholder.jpg",
     url: "https://example.com/video-conferencing",
     category: "Communication",
@@ -170,19 +183,21 @@ const mockProducts: Product[] = [
       "Recording capabilities",
       "Virtual backgrounds",
       "Breakout rooms",
-      "Meeting transcription"
+      "Meeting transcription",
     ],
     rating: 4.4,
     reviews: 963,
     tags: ["Video", "Communication", "Meetings"],
-    availability: "Available"
-  }
+    availability: "Available",
+  },
 ];
 
 export default function ProductsPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">(
+    "monthly"
+  );
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -199,7 +214,7 @@ export default function ProductsPage() {
   };
 
   const handleViewProduct = (url: string) => {
-    window.open(url, '_blank');
+    window.open(url, "_blank");
   };
 
   return (
@@ -208,9 +223,12 @@ export default function ProductsPage() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4 text-balance">Our Products & Services</h1>
+          <h1 className="text-4xl font-bold mb-4 text-balance">
+            Our Products & Services
+          </h1>
           <p className="text-xl text-muted-foreground text-pretty max-w-2xl mx-auto">
-            Discover our range of premium products and services designed to enhance your digital experience.
+            Discover our range of premium products and services designed to
+            enhance your digital experience.
           </p>
         </div>
 
@@ -243,7 +261,12 @@ export default function ProductsPage() {
             const price = product.price[billingCycle];
 
             return (
-              <Card key={product.id} className={`relative group hover:shadow-lg transition-shadow ${product.isPopular ? "border-primary shadow-lg" : ""}`}>
+              <Card
+                key={product.id}
+                className={`relative group hover:shadow-lg transition-shadow ${
+                  product.isPopular ? "border-primary shadow-lg" : ""
+                }`}
+              >
                 {product.isPopular && (
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
                     <Badge className="bg-primary text-primary-foreground">
@@ -262,7 +285,10 @@ export default function ProductsPage() {
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   <div className="absolute top-2 right-2">
-                    <Badge variant="secondary" className="bg-white/90 text-black">
+                    <Badge
+                      variant="secondary"
+                      className="bg-white/90 text-black"
+                    >
                       <Tag className="w-3 h-3 mr-1" />
                       {product.category}
                     </Badge>
@@ -272,8 +298,12 @@ export default function ProductsPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <CardTitle className="text-xl mb-2">{product.name}</CardTitle>
-                      <CardDescription className="text-sm mb-3">{product.description}</CardDescription>
+                      <CardTitle className="text-xl mb-2">
+                        {product.name}
+                      </CardTitle>
+                      <CardDescription className="text-sm mb-3">
+                        {product.description}
+                      </CardDescription>
                     </div>
                   </div>
 
@@ -285,7 +315,9 @@ export default function ProductsPage() {
                           <Star
                             key={i}
                             className={`w-4 h-4 ${
-                              i < Math.floor(product.rating!) ? "text-yellow-400 fill-current" : "text-gray-300"
+                              i < Math.floor(product.rating!)
+                                ? "text-yellow-400 fill-current"
+                                : "text-gray-300"
                             }`}
                           />
                         ))}
@@ -299,7 +331,9 @@ export default function ProductsPage() {
                   {/* Price */}
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-bold">${price}</span>
-                    <span className="text-muted-foreground">/{billingCycle === "monthly" ? "mo" : "yr"}</span>
+                    <span className="text-muted-foreground">
+                      /{billingCycle === "monthly" ? "mo" : "yr"}
+                    </span>
                   </div>
                 </CardHeader>
 
@@ -308,7 +342,11 @@ export default function ProductsPage() {
                   {product.tags && (
                     <div className="flex flex-wrap gap-1">
                       {product.tags.map((tag, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
+                        <Badge
+                          key={index}
+                          variant="outline"
+                          className="text-xs"
+                        >
                           {tag}
                         </Badge>
                       ))}
@@ -320,7 +358,10 @@ export default function ProductsPage() {
                     <p className="font-medium text-sm">Key Features:</p>
                     <ul className="space-y-1">
                       {product.features.slice(0, 4).map((feature, index) => (
-                        <li key={index} className="flex items-center text-sm text-muted-foreground">
+                        <li
+                          key={index}
+                          className="flex items-center text-sm text-muted-foreground"
+                        >
                           <Zap className="h-3 w-3 text-primary mr-2 flex-shrink-0" />
                           {feature}
                         </li>
@@ -336,7 +377,9 @@ export default function ProductsPage() {
                   {/* Availability */}
                   <div className="flex items-center gap-2 text-sm">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-muted-foreground">{product.availability}</span>
+                    <span className="text-muted-foreground">
+                      {product.availability}
+                    </span>
                   </div>
                 </CardContent>
 
@@ -364,30 +407,42 @@ export default function ProductsPage() {
 
         {/* FAQ Section */}
         <div className="mt-16 text-center">
-          <h2 className="text-2xl font-bold mb-4">Frequently Asked Questions</h2>
+          <h2 className="text-2xl font-bold mb-4">
+            Frequently Asked Questions
+          </h2>
           <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto text-left">
             <div>
-              <h3 className="font-semibold mb-2">How do I subscribe to a product?</h3>
+              <h3 className="font-semibold mb-2">
+                How do I subscribe to a product?
+              </h3>
               <p className="text-muted-foreground text-sm">
-                Click the "Subscribe" button on any product card to start your subscription. You can choose between monthly or yearly billing.
+                Click the "Subscribe" button on any product card to start your
+                subscription. You can choose between monthly or yearly billing.
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-2">What payment methods do you accept?</h3>
+              <h3 className="font-semibold mb-2">
+                What payment methods do you accept?
+              </h3>
               <p className="text-muted-foreground text-sm">
-                We accept eSewa, Khalti, and major credit cards for your convenience.
+                We accept eSewa, Khalti, and major credit cards for your
+                convenience.
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-2">Can I cancel my subscription anytime?</h3>
+              <h3 className="font-semibold mb-2">
+                Can I cancel my subscription anytime?
+              </h3>
               <p className="text-muted-foreground text-sm">
-                Yes, you can cancel your subscription at any time with no cancellation fees.
+                Yes, you can cancel your subscription at any time with no
+                cancellation fees.
               </p>
             </div>
             <div>
               <h3 className="font-semibold mb-2">Do you offer free trials?</h3>
               <p className="text-muted-foreground text-sm">
-                Most of our products come with a free trial period. Check individual product details for specific trial information.
+                Most of our products come with a free trial period. Check
+                individual product details for specific trial information.
               </p>
             </div>
           </div>
