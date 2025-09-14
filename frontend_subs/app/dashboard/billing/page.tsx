@@ -11,6 +11,8 @@ import { MainNav } from "@/components/navigation/main-nav"
 import { PaymentMethodCard } from "@/components/payment/payment-method-card"
 import { AddPaymentMethod } from "@/components/payment/add-payment-method"
 import { InvoiceViewer } from "@/components/payment/invoice-viewer"
+import { ReminderPreferences } from "@/components/reminder/reminder-preferences"
+import { ManualReminderManager } from "@/components/reminder/manual-reminder-manager"
 import { getUserTransactions } from "@/lib/mock-data"
 import { CreditCard, Receipt, Settings, Download, Check, ArrowLeft } from "lucide-react"
 import Link from "next/link"
@@ -29,10 +31,9 @@ export default function BillingPage() {
     },
     {
       id: "2",
-      type: "card" as const,
-      name: "Visa Card",
-      details: "**** **** **** 4242",
-      expiryDate: "12/25",
+      type: "khalti" as const,
+      name: "Khalti Wallet",
+      details: "****@khalti.com",
       isDefault: false,
     },
   ])
@@ -99,12 +100,12 @@ export default function BillingPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
           body: JSON.stringify({
             productId,
             billingCycle,
-            paymentMethod: paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.type || "esewa",
+            paymentMethod: paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.type || "khalti",
           }),
         }
       )
@@ -122,19 +123,31 @@ export default function BillingPage() {
       // Get the payment amount from product or plan data
       const paymentAmount = productData?.price?.[billingCycle] || planData?.pricing?.[billingCycle] || 0
       
-      // Create eSewa payment
+      // Create Khalti payment
       const paymentResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/payments/esewa`,
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/payments/khalti`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
           body: JSON.stringify({
             productId,
+            subscriptionId: subscriptionResult.data._id,
             amount: paymentAmount,
-            currency: "NPR", // eSewa uses NPR
+            currency: "NPR",
+            customer_info: {
+              name: user?.name || "Customer",
+              email: user?.email || "",
+              phone: user?.phone || "",
+            },
+            amount_breakdown: {
+              subtotal: paymentAmount,
+              tax: 0,
+              shipping: 0,
+              discount: 0,
+            },
           }),
         }
       )
@@ -149,50 +162,18 @@ export default function BillingPage() {
       const paymentResult = await paymentResponse.json()
       console.log("Payment created:", paymentResult)
 
-      // Redirect to eSewa payment page
-      if (paymentResult.data?.esewa_initiate_url) {
-        // Create a form to submit to eSewa
-        const form = document.createElement('form')
-        form.method = 'POST'
-        form.action = paymentResult.data.esewa_initiate_url
-        form.target = '_blank'
-
-        // Add all the required fields for eSewa
-        const fields = {
-          amount: paymentResult.data.amount,
-          tax_amount: paymentResult.data.tax_amount,
-          total_amount: paymentResult.data.total_amount,
-          transaction_uuid: paymentResult.data.transaction_uuid,
-          product_code: paymentResult.data.product_code,
-          product_service_charge: paymentResult.data.product_service_charge,
-          product_delivery_charge: paymentResult.data.product_delivery_charge,
-          success_url: paymentResult.data.success_url,
-          failure_url: paymentResult.data.failure_url,
-          signed_field_names: paymentResult.data.signed_field_names,
-          signature: paymentResult.data.signature,
-        }
-
-        // Add fields to form
-        Object.entries(fields).forEach(([key, value]) => {
-          const input = document.createElement('input')
-          input.type = 'hidden'
-          input.name = key
-          input.value = value
-          form.appendChild(input)
-        })
-
-        // Submit form
-        document.body.appendChild(form)
-        form.submit()
-        document.body.removeChild(form)
+      // Redirect to Khalti payment page
+      if (paymentResult.data?.payment_url) {
+        // Redirect to Khalti payment page
+        window.location.href = paymentResult.data.payment_url
 
         // Show success message
-        setPaymentStatus("Redirecting to eSewa for payment...")
+        setPaymentStatus("Redirecting to Khalti for payment...")
         setTimeout(() => {
           setPaymentStatus(null)
         }, 3000)
       } else {
-        console.error("No eSewa URL provided")
+        console.error("No Khalti URL provided")
         setPaymentStatus("Payment created but no payment URL provided.")
         setTimeout(() => {
           setPaymentStatus(null)
@@ -347,10 +328,12 @@ export default function BillingPage() {
         )}
 
         <Tabs defaultValue="payment-methods" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="payment-methods">Payment Methods</TabsTrigger>
             <TabsTrigger value="invoices">Invoices</TabsTrigger>
             <TabsTrigger value="billing-info">Billing Info</TabsTrigger>
+            <TabsTrigger value="reminders">Auto Reminders</TabsTrigger>
+            <TabsTrigger value="manual-reminders">Manual Reminders</TabsTrigger>
           </TabsList>
 
           <TabsContent value="payment-methods" className="space-y-6">
@@ -435,7 +418,7 @@ export default function BillingPage() {
                       disabled={isCreatingSubscription || !productData || !planData}
                       size="lg"
                     >
-                      {isCreatingSubscription ? "Processing..." : "Complete Subscription"}
+                      {isCreatingSubscription ? "Processing..." : "Pay with Khalti"}
                     </Button>
                   </div>
                 </CardContent>
@@ -586,6 +569,18 @@ export default function BillingPage() {
                 <Button variant="outline">Update Preferences</Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="reminders" className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold">Automatic Reminder Preferences</h2>
+              <p className="text-muted-foreground">Configure when and how you want to be reminded about subscription expiry</p>
+            </div>
+            <ReminderPreferences />
+          </TabsContent>
+
+          <TabsContent value="manual-reminders" className="space-y-6">
+            <ManualReminderManager />
           </TabsContent>
         </Tabs>
       </div>

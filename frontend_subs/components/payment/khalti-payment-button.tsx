@@ -48,7 +48,7 @@ export default function KhaltiPaymentButton({
       setLoading(true);
 
       // Get auth token from localStorage or context
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("accessToken");
       if (!token) {
         throw new Error("Please log in to make a payment");
       }

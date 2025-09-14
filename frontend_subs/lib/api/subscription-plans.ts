@@ -83,7 +83,7 @@ export interface ListResponse {
 // Get authorization token (you can implement this based on your auth system)
 const getAuthToken = (): string | null => {
   // Return the stored auth token or null
-  return localStorage.getItem("authToken");
+  return localStorage.getItem("accessToken");
 };
 
 // Generic API request function

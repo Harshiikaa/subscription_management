@@ -85,7 +85,7 @@ export default function PaymentStatus({
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("accessToken");
       if (!token) {
         throw new Error("Please log in to view payment status");
       }
