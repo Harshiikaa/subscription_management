@@ -5,7 +5,9 @@ const {
   createSubscriptionPayment,
   createProductPayment,
   createEsewaPayment,
+  createKhaltiPayment,
   completePayment,
+  verifyKhaltiPayment,
   getPayment,
   getUserPayments,
   getSubscriptionPayments,
@@ -17,6 +19,7 @@ const {
   getPaymentStats,
   success,
   failure,
+  testKhaltiConfig,
 } = require("../controllers/paymentController");
 
 const router = express.Router();
@@ -29,11 +32,16 @@ const router = express.Router();
 
 router.post("/product", authenticate, createProductPayment);
 router.post("/esewa", authenticate, createEsewaPayment); // Legacy eSewa payment
+router.post("/khalti", authenticate, createKhaltiPayment); // Khalti payment
 // Payment completion (gateway callbacks)
 router.all("/complete", completePayment);
+router.all("/khalti/verify", verifyKhaltiPayment); // Khalti payment verification
 // Payment status pages
 router.get("/success", success);
 router.get("/failure", failure);
+
+// Test endpoints
+router.get("/khalti/test", testKhaltiConfig);
 
 // Payment retrieval routes
 router.get("/me", authenticate, getUserPayments);

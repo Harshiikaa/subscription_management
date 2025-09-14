@@ -1,0 +1,278 @@
+{
+  "info": {
+    "name": "Khalti Payment Integration",
+    "description": "Collection for testing Khalti payment integration",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"your_email@example.com\",\n  \"password\": \"your_password\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Khalti Configuration",
+      "item": [
+        {
+          "name": "Test Khalti Config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/khalti/test",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "khalti", "test"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Khalti Payments",
+      "item": [
+        {
+          "name": "Create Product Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"your_product_id_here\",\n  \"amount\": 1000,\n  \"currency\": \"NPR\",\n  \"customer_info\": {\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"phone\": \"9841234567\"\n  },\n  \"amount_breakdown\": {\n    \"subtotal\": 1000,\n    \"tax\": 0,\n    \"shipping\": 0,\n    \"discount\": 0\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/khalti",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "khalti"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Subscription Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriptionId\": \"your_subscription_id_here\",\n  \"amount\": 5000,\n  \"currency\": \"NPR\",\n  \"customer_info\": {\n    \"name\": \"Jane Smith\",\n    \"email\": \"jane@example.com\",\n    \"phone\": \"9841234568\"\n  },\n  \"amount_breakdown\": {\n    \"subtotal\": 5000,\n    \"tax\": 0,\n    \"shipping\": 0,\n    \"discount\": 0\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/khalti",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "khalti"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Payment (Callback)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/khalti/verify?pidx=khalti_payment_id&transaction_uuid=transaction_uuid",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "khalti", "verify"],
+              "query": [
+                {
+                  "key": "pidx",
+                  "value": "khalti_payment_id"
+                },
+                {
+                  "key": "transaction_uuid",
+                  "value": "transaction_uuid"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payment Management",
+      "item": [
+        {
+          "name": "Get Payment by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "{{paymentId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Payments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments/me?paymentType=product&status=pending&page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "me"],
+              "query": [
+                {
+                  "key": "paymentType",
+                  "value": "product"
+                },
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Payment Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\",\n  \"additionalData\": {\n    \"adminNote\": \"Payment manually verified\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "{{paymentId}}", "status"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payment Status Pages",
+      "item": [
+        {
+          "name": "Success Page",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/success?transactionId=test_transaction&message=Payment%20successful",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "success"],
+              "query": [
+                {
+                  "key": "transactionId",
+                  "value": "test_transaction"
+                },
+                {
+                  "key": "message",
+                  "value": "Payment successful"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Failure Page",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/failure?message=Payment%20failed",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "failure"],
+              "query": [
+                {
+                  "key": "message",
+                  "value": "Payment failed"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

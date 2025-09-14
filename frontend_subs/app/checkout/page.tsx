@@ -1,255 +1,223 @@
-"use client"
+"use client";
 
-import { useAuth } from "@/contexts/auth-context"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Separator } from "@/components/ui/separator"
-import { MainNav } from "@/components/navigation/main-nav"
-import { getProductById, getUserSubscriptions } from "@/lib/mock-data"
-import { CreditCard, Shield, Check, ArrowLeft } from "lucide-react"
-import Link from "next/link"
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { ShoppingCart, CreditCard, User, Mail, Phone } from "lucide-react";
+import KhaltiPaymentButton from "@/components/payment/khalti-payment-button";
+import PaymentStatus from "@/components/payment/payment-status";
+import { toast } from "@/hooks/use-toast";
 
 export default function CheckoutPage() {
-  const { user, isAuthenticated, isLoading } = useAuth()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-
-  const [paymentMethod, setPaymentMethod] = useState("esewa")
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [cardDetails, setCardDetails] = useState({
-    number: "",
-    expiry: "",
-    cvv: "",
+  const [customerInfo, setCustomerInfo] = useState({
     name: "",
-  })
+    email: "",
+    phone: "",
+  });
+  const [paymentId, setPaymentId] = useState<string | null>(null);
+  const [showPaymentStatus, setShowPaymentStatus] = useState(false);
 
-  const productId = searchParams.get("product")
-  const billingCycle = (searchParams.get("billing") as "monthly" | "yearly") || "monthly"
+  // Mock product data - replace with actual data from your API
+  const product = {
+    id: "68bd5c9ee0f8f2ae8a6a5239",
+    name: "Premium Subscription",
+    description: "Access to all premium features for 1 month",
+    price: 1299,
+    currency: "NPR",
+  };
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/login")
-    }
-  }, [isAuthenticated, isLoading, router])
+  const amountBreakdown = {
+    subtotal: product.price,
+    tax: Math.round(product.price * 0.13), // 13% VAT
+    shipping: 0,
+    discount: 0,
+  };
 
-  if (isLoading || !user || !productId) {
-    return <div>Loading...</div>
-  }
+  const totalAmount = amountBreakdown.subtotal + amountBreakdown.tax + amountBreakdown.shipping - amountBreakdown.discount;
 
-  const product = getProductById(productId)
-  const userSubscriptions = getUserSubscriptions(user.id)
-  const activeSubscription = userSubscriptions.find((sub) => sub.status === "active")
+  const handlePaymentSuccess = (paymentData: any) => {
+    setPaymentId(paymentData.paymentId);
+    setShowPaymentStatus(true);
+    toast({
+      title: "Payment Initiated",
+      description: "Redirecting to Khalti payment page...",
+    });
+  };
 
-  if (!product) {
-    router.push("/products")
-    return null
-  }
-
-  const price = product.price[billingCycle]
-  const isUpgrade = activeSubscription && activeSubscription.productId !== productId
-
-  const handlePayment = async () => {
-    setIsProcessing(true)
-
-    // Mock payment processing
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    // In a real app, this would integrate with payment gateways
-    console.log("Processing payment:", {
-      productId,
-      billingCycle,
-      paymentMethod,
-      amount: price,
-      userId: user.id,
-    })
-
-    setIsProcessing(false)
-    router.push("/dashboard/subscriptions?success=true")
-  }
+  const handlePaymentError = (error: string) => {
+    toast({
+      title: "Payment Error",
+      description: error,
+      variant: "destructive",
+    });
+  };
 
   return (
-    <div className="min-h-screen bg-background">
-      <MainNav />
-
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <Button variant="ghost" asChild>
-            <Link href="/products">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Plans
-            </Link>
-          </Button>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Checkout</h1>
+          <p className="text-gray-600">Complete your purchase securely</p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
-          {/* Order Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Summary</CardTitle>
-              <CardDescription>Review your subscription details</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Column - Customer Info & Payment */}
+          <div className="space-y-6">
+            {/* Customer Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Customer Information
+                </CardTitle>
+                <CardDescription>
+                  Please provide your contact details
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div>
-                  <h3 className="font-semibold">{product.name}</h3>
-                  <p className="text-sm text-muted-foreground">{product.description}</p>
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    value={customerInfo.name}
+                    onChange={(e) => setCustomerInfo(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Enter your full name"
+                  />
                 </div>
-                <Badge>{billingCycle}</Badge>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <h4 className="font-medium">Features included:</h4>
-                <ul className="space-y-1">
-                  {product.features.slice(0, 5).map((feature, index) => (
-                    <li key={index} className="flex items-center text-sm">
-                      <Check className="h-4 w-4 text-primary mr-2 flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span>${price}</span>
+                <div>
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={customerInfo.email}
+                    onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="Enter your email"
+                  />
                 </div>
-                <div className="flex justify-between">
-                  <span>Tax</span>
-                  <span>$0.00</span>
+                <div>
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    value={customerInfo.phone}
+                    onChange={(e) => setCustomerInfo(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="Enter your phone number"
+                  />
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Payment Method */}
+            <KhaltiPaymentButton
+              productId={product.id}
+              amount={totalAmount}
+              currency={product.currency}
+              customerInfo={customerInfo}
+              amountBreakdown={amountBreakdown}
+              onSuccess={handlePaymentSuccess}
+              onError={handlePaymentError}
+              disabled={!customerInfo.name || !customerInfo.email}
+            />
+          </div>
+
+          {/* Right Column - Order Summary */}
+          <div className="space-y-6">
+            {/* Order Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="w-5 h-5" />
+                  Order Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Product Details */}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-semibold">{product.name}</h3>
+                    <p className="text-sm text-gray-600">{product.description}</p>
+                  </div>
+                  <Badge variant="secondary">1 Month</Badge>
+                </div>
+
                 <Separator />
-                <div className="flex justify-between font-semibold text-lg">
-                  <span>Total</span>
-                  <span>${price}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Billed {billingCycle}. Cancel anytime.</p>
-              </div>
 
-              {isUpgrade && (
-                <div className="bg-muted p-4 rounded-lg">
-                  <p className="text-sm font-medium">Subscription Change</p>
-                  <p className="text-xs text-muted-foreground">
-                    Your current subscription will be cancelled and replaced with this new plan.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Payment Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment Information</CardTitle>
-              <CardDescription>Choose your preferred payment method</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <Label className="text-base font-medium">Payment Method</Label>
-                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="mt-2">
-                  <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                    <RadioGroupItem value="esewa" id="esewa" />
-                    <Label htmlFor="esewa" className="flex-1 cursor-pointer">
-                      <div className="flex items-center justify-between">
-                        <span>eSewa</span>
-                        <Badge variant="secondary">Popular</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">Pay with your eSewa wallet</p>
-                    </Label>
+                {/* Price Breakdown */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal:</span>
+                    <span>{product.currency} {amountBreakdown.subtotal.toFixed(2)}</span>
                   </div>
-
-                  <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                    <RadioGroupItem value="khalti" id="khalti" />
-                    <Label htmlFor="khalti" className="flex-1 cursor-pointer">
-                      <span>Khalti</span>
-                      <p className="text-xs text-muted-foreground">Pay with your Khalti wallet</p>
-                    </Label>
+                  <div className="flex justify-between text-sm">
+                    <span>VAT (13%):</span>
+                    <span>{product.currency} {amountBreakdown.tax.toFixed(2)}</span>
                   </div>
-
-                  <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                    <RadioGroupItem value="card" id="card" />
-                    <Label htmlFor="card" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        <span>Credit/Debit Card</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">Visa, Mastercard, American Express</p>
-                    </Label>
+                  <div className="flex justify-between text-sm">
+                    <span>Shipping:</span>
+                    <span>{product.currency} {amountBreakdown.shipping.toFixed(2)}</span>
                   </div>
-                </RadioGroup>
-              </div>
-
-              {paymentMethod === "card" && (
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="cardName">Cardholder Name</Label>
-                    <Input
-                      id="cardName"
-                      placeholder="John Doe"
-                      value={cardDetails.name}
-                      onChange={(e) => setCardDetails((prev) => ({ ...prev, name: e.target.value }))}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="cardNumber">Card Number</Label>
-                    <Input
-                      id="cardNumber"
-                      placeholder="1234 5678 9012 3456"
-                      value={cardDetails.number}
-                      onChange={(e) => setCardDetails((prev) => ({ ...prev, number: e.target.value }))}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="expiry">Expiry Date</Label>
-                      <Input
-                        id="expiry"
-                        placeholder="MM/YY"
-                        value={cardDetails.expiry}
-                        onChange={(e) => setCardDetails((prev) => ({ ...prev, expiry: e.target.value }))}
-                      />
+                  {amountBreakdown.discount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Discount:</span>
+                      <span>-{product.currency} {amountBreakdown.discount.toFixed(2)}</span>
                     </div>
-                    <div>
-                      <Label htmlFor="cvv">CVV</Label>
-                      <Input
-                        id="cvv"
-                        placeholder="123"
-                        value={cardDetails.cvv}
-                        onChange={(e) => setCardDetails((prev) => ({ ...prev, cvv: e.target.value }))}
-                      />
-                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                <div className="flex justify-between text-lg font-semibold">
+                  <span>Total:</span>
+                  <span>{product.currency} {totalAmount.toFixed(2)}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payment Security */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5" />
+                  Payment Security
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 text-sm text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>256-bit SSL encryption</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>PCI DSS compliant</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>Secure payment processing</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>No card details stored</span>
                   </div>
                 </div>
-              )}
+              </CardContent>
+            </Card>
 
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Shield className="h-4 w-4" />
-                <span>Your payment information is secure and encrypted</span>
-              </div>
-
-              <Button className="w-full" size="lg" onClick={handlePayment} disabled={isProcessing}>
-                {isProcessing ? "Processing..." : `Pay $${price}`}
-              </Button>
-
-              <p className="text-xs text-muted-foreground text-center">
-                By completing this purchase, you agree to our Terms of Service and Privacy Policy.
-              </p>
-            </CardContent>
-          </Card>
+            {/* Payment Status */}
+            {showPaymentStatus && paymentId && (
+              <PaymentStatus
+                paymentId={paymentId}
+                autoRefresh={true}
+                refreshInterval={3000}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
