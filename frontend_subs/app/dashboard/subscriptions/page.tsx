@@ -137,8 +137,15 @@ export default function SubscriptionsPage() {
     (sub) => sub.status === "active"
   );
 
-  const handleSubscribe = (productId: string) => {
-    router.push(`/checkout?product=${productId}&billing=${billingCycle}`);
+  const handleSubscribe = (planId: string) => {
+    const productId = searchParams.get("product");
+    if (productId) {
+      // If coming from products page, redirect to billing with both product and plan
+      router.push(`/dashboard/billing?product=${productId}&plan=${planId}&billing=${billingCycle}`);
+    } else {
+      // If coming directly to subscriptions, redirect to checkout
+      router.push(`/checkout?plan=${planId}&billing=${billingCycle}`);
+    }
   };
 
   useEffect(() => {

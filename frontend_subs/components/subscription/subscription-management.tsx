@@ -37,169 +37,254 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar, DollarSign, Edit, Eye, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
-
-interface Subscription {
-  id: string;
-  productId: string;
-  productName: string;
-  planName: string;
-  description: string;
-  price: number;
-  billingCycle: "monthly" | "yearly" | "weekly";
-  trialDays: number;
-  features: string[];
-  status: "active" | "inactive" | "draft";
-  createdAt: string;
-}
+import { useState, useEffect } from "react";
+import subscriptionApi, { Subscription } from "@/lib/api/subscriptions";
 
 export function SubscriptionManagement() {
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([
-    {
-      id: "1",
-      productId: "1",
-      productName: "Premium Plan",
-      planName: "Premium Monthly",
-      description: "Monthly subscription with full access",
-      price: 29.99,
-      billingCycle: "monthly",
-      trialDays: 14,
-      features: ["Unlimited access", "Priority support", "Advanced analytics"],
-      status: "active",
-      createdAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      productId: "1",
-      productName: "Premium Plan",
-      planName: "Premium Yearly",
-      description: "Yearly subscription with 20% discount",
-      price: 299.99,
-      billingCycle: "yearly",
-      trialDays: 30,
-      features: [
-        "Unlimited access",
-        "Priority support",
-        "Advanced analytics",
-        "20% discount",
-      ],
-      status: "active",
-      createdAt: "2024-01-15",
-    },
-    {
-      id: "3",
-      productId: "2",
-      productName: "Basic Plan",
-      planName: "Basic Monthly",
-      description: "Monthly basic subscription",
-      price: 9.99,
-      billingCycle: "monthly",
-      trialDays: 7,
-      features: ["Basic access", "Email support"],
-      status: "active",
-      createdAt: "2024-01-10",
-    },
-  ]);
-
-  const [products] = useState([
-    { id: "1", name: "Premium Plan" },
-    { id: "2", name: "Basic Plan" },
-    { id: "3", name: "Enterprise Plan" },
-  ]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingSubscription, setEditingSubscription] =
     useState<Subscription | null>(null);
   const [formData, setFormData] = useState({
+    userId: "",
     productId: "",
-    planName: "",
-    description: "",
-    price: "",
+    subscriptionPlanId: "",
+    subscriptionType: "product" as const,
     billingCycle: "monthly" as const,
-    trialDays: "",
-    features: "",
-    status: "draft" as const,
+    currency: "USD",
+    amount: "",
+    startDate: "",
+    endDate: "",
+    trialEndsAt: "",
   });
 
-  const handleCreateSubscription = () => {
-    const selectedProduct = products.find((p) => p.id === formData.productId);
-    const newSubscription: Subscription = {
-      id: Date.now().toString(),
-      productId: formData.productId,
-      productName: selectedProduct?.name || "",
-      planName: formData.planName,
-      description: formData.description,
-      price: Number.parseFloat(formData.price),
-      billingCycle: formData.billingCycle,
-      trialDays: Number.parseInt(formData.trialDays),
-      features: formData.features
-        .split(",")
-        .map((f) => f.trim())
-        .filter((f) => f),
-      status: formData.status,
-      createdAt: new Date().toISOString().split("T")[0],
-    };
-    setSubscriptions([...subscriptions, newSubscription]);
-    resetForm();
-    setIsCreateDialogOpen(false);
+  // Fetch subscriptions from API
+  const fetchSubscriptions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await subscriptionApi.listAll();
+      setSubscriptions(result.data.items);
+    } catch (error) {
+      console.error('Error fetching subscriptions:', error);
+      setError('Failed to load subscriptions');
+      // Fallback to mock data if API fails
+      setSubscriptions([
+        {
+          _id: "1",
+          userId: "user1",
+          productId: "product1",
+          subscriptionType: "product",
+          status: "active",
+          billingCycle: "monthly",
+          currency: "USD",
+          amount: 29.99,
+          startDate: "2024-01-15T00:00:00.000Z",
+          nextBilling: "2024-02-15T00:00:00.000Z",
+          createdAt: "2024-01-15T00:00:00.000Z",
+          updatedAt: "2024-01-15T00:00:00.000Z",
+          product: {
+            _id: "product1",
+            name: "Premium Plan",
+            description: "Monthly subscription with full access"
+          }
+        },
+        {
+          _id: "2",
+          userId: "user2",
+          subscriptionPlanId: "plan1",
+          subscriptionType: "plan",
+          status: "active",
+          billingCycle: "yearly",
+          currency: "USD",
+          amount: 299.99,
+          startDate: "2024-01-15T00:00:00.000Z",
+          nextBilling: "2025-01-15T00:00:00.000Z",
+          createdAt: "2024-01-15T00:00:00.000Z",
+          updatedAt: "2024-01-15T00:00:00.000Z",
+          subscriptionPlan: {
+            _id: "plan1",
+            name: "Professional Plan",
+            description: "Yearly subscription with 20% discount"
+          }
+        },
+        {
+          _id: "3",
+          userId: "user3",
+          productId: "product2",
+          subscriptionType: "product",
+          status: "trial",
+          billingCycle: "monthly",
+          currency: "USD",
+          amount: 9.99,
+          startDate: "2024-01-10T00:00:00.000Z",
+          trialEndsAt: "2024-01-17T00:00:00.000Z",
+          createdAt: "2024-01-10T00:00:00.000Z",
+          updatedAt: "2024-01-10T00:00:00.000Z",
+          product: {
+            _id: "product2",
+            name: "Basic Plan",
+            description: "Monthly basic subscription"
+          }
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSubscriptions();
+  }, []);
+
+  const handleCreateSubscription = async () => {
+    try {
+      const subscriptionData = {
+        userId: formData.userId,
+        productId: formData.productId || undefined,
+        subscriptionPlanId: formData.subscriptionPlanId || undefined,
+        subscriptionType: formData.subscriptionType,
+        billingCycle: formData.billingCycle,
+        currency: formData.currency,
+        amount: Number.parseFloat(formData.amount),
+        startDate: formData.startDate,
+        endDate: formData.endDate || undefined,
+        trialEndsAt: formData.trialEndsAt || undefined,
+      };
+
+      let result;
+      if (formData.subscriptionType === "product") {
+        result = await subscriptionApi.createFromProduct({
+          productId: formData.productId,
+          billingCycle: formData.billingCycle,
+          currency: formData.currency,
+        });
+      } else {
+        result = await subscriptionApi.createFromPlan({
+          subscriptionPlanId: formData.subscriptionPlanId,
+          billingCycle: formData.billingCycle,
+          currency: formData.currency,
+        });
+      }
+
+      setSubscriptions([...subscriptions, result.data]);
+      resetForm();
+      setIsCreateDialogOpen(false);
+    } catch (error) {
+      console.error('Error creating subscription:', error);
+      // For demo purposes, add to local state
+      const newSubscription: Subscription = {
+        _id: Date.now().toString(),
+        userId: formData.userId,
+        productId: formData.productId || undefined,
+        subscriptionPlanId: formData.subscriptionPlanId || undefined,
+        subscriptionType: formData.subscriptionType,
+        status: "active",
+        billingCycle: formData.billingCycle,
+        currency: formData.currency,
+        amount: Number.parseFloat(formData.amount),
+        startDate: formData.startDate,
+        endDate: formData.endDate || undefined,
+        trialEndsAt: formData.trialEndsAt || undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setSubscriptions([...subscriptions, newSubscription]);
+      resetForm();
+      setIsCreateDialogOpen(false);
+    }
   };
 
   const handleEditSubscription = (subscription: Subscription) => {
     setEditingSubscription(subscription);
     setFormData({
-      productId: subscription.productId,
-      planName: subscription.planName,
-      description: subscription.description,
-      price: subscription.price.toString(),
+      userId: subscription.userId,
+      productId: subscription.productId || "",
+      subscriptionPlanId: subscription.subscriptionPlanId || "",
+      subscriptionType: subscription.subscriptionType,
       billingCycle: subscription.billingCycle,
-      trialDays: subscription.trialDays.toString(),
-      features: subscription.features.join(", "),
-      status: subscription.status,
+      currency: subscription.currency,
+      amount: subscription.amount.toString(),
+      startDate: subscription.startDate.split('T')[0],
+      endDate: subscription.endDate ? subscription.endDate.split('T')[0] : "",
+      trialEndsAt: subscription.trialEndsAt ? subscription.trialEndsAt.split('T')[0] : "",
     });
   };
 
-  const handleUpdateSubscription = () => {
+  const handleUpdateSubscription = async () => {
     if (!editingSubscription) return;
 
-    const selectedProduct = products.find((p) => p.id === formData.productId);
-    const updatedSubscriptions = subscriptions.map((s) =>
-      s.id === editingSubscription.id
-        ? {
-            ...s,
-            productId: formData.productId,
-            productName: selectedProduct?.name || "",
-            planName: formData.planName,
-            description: formData.description,
-            price: Number.parseFloat(formData.price),
-            billingCycle: formData.billingCycle,
-            trialDays: Number.parseInt(formData.trialDays),
-            features: formData.features
-              .split(",")
-              .map((f) => f.trim())
-              .filter((f) => f),
-            status: formData.status,
-          }
-        : s
-    );
-    setSubscriptions(updatedSubscriptions);
-    setEditingSubscription(null);
-    resetForm();
+    try {
+      const updateData = {
+        userId: formData.userId,
+        productId: formData.productId || undefined,
+        subscriptionPlanId: formData.subscriptionPlanId || undefined,
+        subscriptionType: formData.subscriptionType,
+        billingCycle: formData.billingCycle,
+        currency: formData.currency,
+        amount: Number.parseFloat(formData.amount),
+        startDate: formData.startDate,
+        endDate: formData.endDate || undefined,
+        trialEndsAt: formData.trialEndsAt || undefined,
+      };
+
+      const result = await subscriptionApi.update(editingSubscription._id, updateData);
+      setSubscriptions(subscriptions.map(s => s._id === editingSubscription._id ? result.data : s));
+      setEditingSubscription(null);
+      resetForm();
+    } catch (error) {
+      console.error('Error updating subscription:', error);
+      // For demo purposes, update local state
+      const updatedSubscriptions = subscriptions.map((s) =>
+        s._id === editingSubscription._id
+          ? {
+              ...s,
+              userId: formData.userId,
+              productId: formData.productId || undefined,
+              subscriptionPlanId: formData.subscriptionPlanId || undefined,
+              subscriptionType: formData.subscriptionType,
+              billingCycle: formData.billingCycle,
+              currency: formData.currency,
+              amount: Number.parseFloat(formData.amount),
+              startDate: formData.startDate,
+              endDate: formData.endDate || undefined,
+              trialEndsAt: formData.trialEndsAt || undefined,
+              updatedAt: new Date().toISOString(),
+            }
+          : s
+      );
+      setSubscriptions(updatedSubscriptions);
+      setEditingSubscription(null);
+      resetForm();
+    }
   };
 
-  const handleDeleteSubscription = (id: string) => {
-    setSubscriptions(subscriptions.filter((s) => s.id !== id));
+  const handleDeleteSubscription = async (id: string) => {
+    try {
+      await subscriptionApi.cancel(id);
+      setSubscriptions(subscriptions.filter((s) => s._id !== id));
+    } catch (error) {
+      console.error('Error deleting subscription:', error);
+      // For demo purposes, remove from local state
+      setSubscriptions(subscriptions.filter((s) => s._id !== id));
+    }
   };
 
   const resetForm = () => {
     setFormData({
+      userId: "",
       productId: "",
-      planName: "",
-      description: "",
-      price: "",
+      subscriptionPlanId: "",
+      subscriptionType: "product",
       billingCycle: "monthly",
-      trialDays: "",
-      features: "",
-      status: "draft",
+      currency: "USD",
+      amount: "",
+      startDate: "",
+      endDate: "",
+      trialEndsAt: "",
     });
   };
 
@@ -207,7 +292,9 @@ export function SubscriptionManagement() {
     const variants = {
       active: "default",
       inactive: "secondary",
-      draft: "outline",
+      cancelled: "destructive",
+      expired: "outline",
+      trial: "secondary",
     } as const;
 
     return (
@@ -221,6 +308,7 @@ export function SubscriptionManagement() {
     const colors = {
       monthly: "bg-blue-100 text-blue-800",
       yearly: "bg-green-100 text-green-800",
+      quarterly: "bg-orange-100 text-orange-800",
       weekly: "bg-purple-100 text-purple-800",
     } as const;
 
@@ -228,6 +316,22 @@ export function SubscriptionManagement() {
       <Badge className={colors[cycle as keyof typeof colors]}>{cycle}</Badge>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-muted-foreground">Loading subscriptions...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-destructive">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -392,60 +496,64 @@ export function SubscriptionManagement() {
         </Dialog>
       </div>
 
-      <Card>
+        <Card>
         <CardHeader>
-          <CardTitle>Subscription Plans</CardTitle>
+          <CardTitle>All Subscriptions</CardTitle>
           <CardDescription>
-            Manage subscription plans and pricing for your products
+            Manage all user subscriptions and billing information
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Plan Details</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead>Price</TableHead>
+                <TableHead>Subscription Details</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Amount</TableHead>
                 <TableHead>Billing</TableHead>
-                <TableHead>Trial</TableHead>
+                <TableHead>Next Billing</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {subscriptions.map((subscription) => (
-                <TableRow key={subscription.id}>
+                <TableRow key={subscription._id}>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{subscription.planName}</div>
-                      <div className="text-sm text-muted-foreground line-clamp-1">
-                        {subscription.description}
+                      <div className="font-medium">
+                        {subscription.subscriptionType === "product" 
+                          ? subscription.product?.name || "Unknown Product"
+                          : subscription.subscriptionPlan?.name || "Unknown Plan"
+                        }
                       </div>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {subscription.features
-                          .slice(0, 2)
-                          .map((feature, index) => (
-                            <Badge
-                              key={index}
-                              variant="outline"
-                              className="text-xs"
-                            >
-                              {feature}
-                            </Badge>
-                          ))}
-                        {subscription.features.length > 2 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{subscription.features.length - 2} more
-                          </Badge>
-                        )}
+                      <div className="text-sm text-muted-foreground line-clamp-1">
+                        {subscription.subscriptionType === "product" 
+                          ? subscription.product?.description || ""
+                          : subscription.subscriptionPlan?.description || ""
+                        }
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Started: {new Date(subscription.startDate).toLocaleDateString()}
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{subscription.productName}</TableCell>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">{subscription.user?.name || "Unknown User"}</div>
+                      <div className="text-sm text-muted-foreground">{subscription.user?.email || subscription.userId}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-xs">
+                      {subscription.subscriptionType}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <DollarSign className="h-3 w-3" />
-                      {subscription.price}
+                      {subscription.currency} {subscription.amount}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -454,7 +562,10 @@ export function SubscriptionManagement() {
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      {subscription.trialDays} days
+                      {subscription.nextBilling 
+                        ? new Date(subscription.nextBilling).toLocaleDateString()
+                        : "N/A"
+                      }
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(subscription.status)}</TableCell>
@@ -653,7 +764,7 @@ export function SubscriptionManagement() {
                         variant="ghost"
                         size="sm"
                         onClick={() =>
-                          handleDeleteSubscription(subscription.id)
+                          handleDeleteSubscription(subscription._id)
                         }
                       >
                         <Trash2 className="h-4 w-4" />

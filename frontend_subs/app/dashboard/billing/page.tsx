@@ -1,7 +1,7 @@
 "use client"
 
 import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,11 +12,13 @@ import { PaymentMethodCard } from "@/components/payment/payment-method-card"
 import { AddPaymentMethod } from "@/components/payment/add-payment-method"
 import { InvoiceViewer } from "@/components/payment/invoice-viewer"
 import { getUserTransactions } from "@/lib/mock-data"
-import { CreditCard, Receipt, Settings, Download } from "lucide-react"
+import { CreditCard, Receipt, Settings, Download, Check, ArrowLeft } from "lucide-react"
+import Link from "next/link"
 
 export default function BillingPage() {
   const { user, isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [paymentMethods, setPaymentMethods] = useState([
     {
       id: "1",
@@ -35,11 +37,92 @@ export default function BillingPage() {
     },
   ])
 
+  // Subscription creation state
+  const [isCreatingSubscription, setIsCreatingSubscription] = useState(false)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("1")
+  const [productData, setProductData] = useState<any>(null)
+  const [planData, setPlanData] = useState<any>(null)
+
+  const productId = searchParams.get("product")
+  const planId = searchParams.get("plan")
+  const billingCycle = (searchParams.get("billing") as "monthly" | "yearly") || "monthly"
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push("/login")
     }
   }, [isAuthenticated, isLoading, router])
+
+  // Fetch product and plan data if coming from subscription flow
+  useEffect(() => {
+    const fetchData = async () => {
+      if (productId) {
+        try {
+          const productRes = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/products/${productId}`
+          )
+          const productJson = await productRes.json()
+          setProductData(productJson.data)
+        } catch (error) {
+          console.error("Failed to fetch product:", error)
+        }
+      }
+      
+      if (planId) {
+        try {
+          const planRes = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/subscription-plans/${planId}`
+          )
+          const planJson = await planRes.json()
+          setPlanData(planJson.data)
+        } catch (error) {
+          console.error("Failed to fetch plan:", error)
+        }
+      }
+    }
+
+    if (productId || planId) {
+      fetchData()
+    }
+  }, [productId, planId])
+
+  const handleCreateSubscription = async () => {
+    if (!productId || !planId) return
+
+    setIsCreatingSubscription(true)
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/subscriptions/product`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            productId,
+            billingCycle,
+            paymentMethod: paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.type || "esewa",
+          }),
+        }
+      )
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log("Subscription created:", result)
+        router.push("/dashboard/subscriptions?success=true")
+      } else {
+        const error = await response.json()
+        console.error("Failed to create subscription:", error)
+        alert("Failed to create subscription. Please try again.")
+      }
+    } catch (error) {
+      console.error("Error creating subscription:", error)
+      alert("An error occurred. Please try again.")
+    } finally {
+      setIsCreatingSubscription(false)
+    }
+  }
 
   if (isLoading || !user) {
     return <div>Loading...</div>
@@ -107,11 +190,78 @@ export default function BillingPage() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-balance">Billing & Payments</h1>
+          <div className="flex items-center gap-4 mb-4">
+            {productId && (
+              <Button variant="ghost" asChild>
+                <Link href="/products">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Products
+                </Link>
+              </Button>
+            )}
+          </div>
+          <h1 className="text-3xl font-bold text-balance">
+            {productId ? "Complete Your Subscription" : "Billing & Payments"}
+          </h1>
           <p className="text-muted-foreground text-pretty">
-            Manage your payment methods, view invoices, and update billing information.
+            {productId 
+              ? "Choose your payment method and complete your subscription."
+              : "Manage your payment methods, view invoices, and update billing information."
+            }
           </p>
         </div>
+
+        {/* Subscription Summary */}
+        {productId && productData && planData && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Subscription Summary</CardTitle>
+              <CardDescription>Review your subscription details before payment</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold">{productData.name}</h3>
+                  <p className="text-sm text-muted-foreground">{productData.description}</p>
+                </div>
+                <Badge>{billingCycle}</Badge>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-medium">Plan: {planData.name}</h4>
+                <p className="text-sm text-muted-foreground">{planData.description}</p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-medium">Features included:</h4>
+                <ul className="space-y-1">
+                  {planData.features?.slice(0, 5).map((feature: any, index: number) => (
+                    <li key={index} className="flex items-center text-sm">
+                      <Check className="h-4 w-4 text-primary mr-2 flex-shrink-0" />
+                      {feature.name || feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>${productData.price?.[billingCycle] || planData.pricing?.[billingCycle] || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tax</span>
+                  <span>$0.00</span>
+                </div>
+                <div className="flex justify-between font-semibold text-lg">
+                  <span>Total</span>
+                  <span>${productData.price?.[billingCycle] || planData.pricing?.[billingCycle] || 0}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Billed {billingCycle}. Cancel anytime.</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="payment-methods" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
@@ -131,13 +281,26 @@ export default function BillingPage() {
 
             <div className="grid md:grid-cols-2 gap-4">
               {paymentMethods.map((method) => (
-                <PaymentMethodCard
-                  key={method.id}
-                  paymentMethod={method}
-                  onSetDefault={handleSetDefault}
-                  onEdit={handleEditPaymentMethod}
-                  onDelete={handleDeletePaymentMethod}
-                />
+                <div key={method.id} className="relative">
+                  <PaymentMethodCard
+                    paymentMethod={method}
+                    onSetDefault={handleSetDefault}
+                    onEdit={handleEditPaymentMethod}
+                    onDelete={handleDeletePaymentMethod}
+                  />
+                  {productId && (
+                    <div className="absolute top-2 right-2">
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value={method.id}
+                        checked={selectedPaymentMethod === method.id}
+                        onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                        className="w-4 h-4 text-primary"
+                      />
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
 
@@ -152,6 +315,29 @@ export default function BillingPage() {
                 </CardHeader>
                 <CardContent>
                   <AddPaymentMethod onAdd={handleAddPaymentMethod} />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Subscription Creation Button */}
+            {productId && planId && (
+              <Card className="mt-6">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold">Ready to Subscribe?</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Complete your subscription with the selected payment method
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={handleCreateSubscription}
+                      disabled={isCreatingSubscription}
+                      size="lg"
+                    >
+                      {isCreatingSubscription ? "Creating..." : "Complete Subscription"}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )}
