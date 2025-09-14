@@ -1,9 +1,10 @@
 "use client";
 import { ProductManagement } from "@/components/product/product-management";
 import { SubscriptionManagement } from "@/components/subscription/subscription-management";
+import { SubscriptionPlanManagement } from "@/components/subscription/subscription-plan-management";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, CreditCard, Package, Users } from "lucide-react";
+import { BarChart3, CreditCard, Package, Users, Settings } from "lucide-react";
 const page = () => {
   return (
     <div className="min-h-screen bg-background">
@@ -20,7 +21,7 @@ const page = () => {
                   Admin Dashboard
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  Product & Subscription Management
+                  Product, Subscription & Plan Management
                 </p>
               </div>
             </div>
@@ -95,7 +96,7 @@ const page = () => {
 
         {/* Management Tabs */}
         <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="products" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
               Product Management
@@ -107,6 +108,13 @@ const page = () => {
               <CreditCard className="h-4 w-4" />
               Subscription Management
             </TabsTrigger>
+            <TabsTrigger
+              value="subscription-plans"
+              className="flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Subscription Plans
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="products">
@@ -115,6 +123,10 @@ const page = () => {
 
           <TabsContent value="subscriptions">
             <SubscriptionManagement />
+          </TabsContent>
+
+          <TabsContent value="subscription-plans">
+            <SubscriptionPlanManagement />
           </TabsContent>
         </Tabs>
       </main>

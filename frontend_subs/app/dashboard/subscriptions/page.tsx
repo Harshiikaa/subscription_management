@@ -25,6 +25,7 @@ import {
   mockProducts,
 } from "@/lib/mock-data";
 import { Check, HardDrive, Headphones, Star, Users } from "lucide-react";
+import subscriptionPlanApi, { SubscriptionPlan } from "@/lib/api/subscription-plans";
 
 export default function SubscriptionsPage() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">(
@@ -34,10 +35,96 @@ export default function SubscriptionsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showSuccess, setShowSuccess] = useState(false);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [plansError, setPlansError] = useState<string | null>(null);
+
+  // Fetch subscription plans from API
+  const fetchSubscriptionPlans = async () => {
+    try {
+      setPlansLoading(true);
+      setPlansError(null);
+      const result = await subscriptionPlanApi.list({ includeInactive: false });
+      setSubscriptionPlans(result.data.items);
+    } catch (error) {
+      console.error('Error fetching subscription plans:', error);
+      setPlansError('Failed to load subscription plans');
+      // Fallback to mock data if API fails
+      setSubscriptionPlans([
+        {
+          _id: "1",
+          name: "Basic Plan",
+          description: "Perfect for individuals and small teams getting started",
+          planType: "basic",
+          pricing: { monthly: 9.99, yearly: 99.99, currency: "USD" },
+          features: [
+            { name: "5GB Storage", description: "Secure cloud storage", included: true },
+            { name: "Basic Support", description: "Email support", included: true },
+          ],
+          billingCycles: ["monthly", "yearly"],
+          trialPeriod: { enabled: true, days: 14 },
+          limits: { maxUsers: 5, maxStorage: "5GB", maxApiCalls: 1000, maxProjects: 3 },
+          isPopular: false,
+          isActive: true,
+          sortOrder: 1,
+          tags: ["basic", "starter"],
+          createdAt: "2024-01-15T00:00:00.000Z",
+          updatedAt: "2024-01-15T00:00:00.000Z",
+        },
+        {
+          _id: "2",
+          name: "Professional Plan",
+          description: "Advanced features for growing businesses and teams",
+          planType: "premium",
+          pricing: { monthly: 29.99, yearly: 299.99, currency: "USD" },
+          features: [
+            { name: "100GB Storage", description: "Ample cloud storage", included: true },
+            { name: "Priority Support", description: "24/7 priority support", included: true },
+            { name: "Advanced Analytics", description: "Detailed usage analytics", included: true },
+          ],
+          billingCycles: ["monthly", "yearly"],
+          trialPeriod: { enabled: true, days: 30 },
+          limits: { maxUsers: 25, maxStorage: "100GB", maxApiCalls: 10000, maxProjects: 15 },
+          isPopular: true,
+          isActive: true,
+          sortOrder: 2,
+          tags: ["professional", "business"],
+          createdAt: "2024-01-15T00:00:00.000Z",
+          updatedAt: "2024-01-15T00:00:00.000Z",
+        },
+        {
+          _id: "3",
+          name: "Enterprise Plan",
+          description: "Complete solution for large organizations",
+          planType: "enterprise",
+          pricing: { monthly: 99.99, yearly: 999.99, currency: "USD" },
+          features: [
+            { name: "Unlimited Storage", description: "No storage limits", included: true },
+            { name: "Dedicated Support", description: "Personal account manager", included: true },
+            { name: "Custom Integrations", description: "Tailored integrations", included: true },
+            { name: "Advanced Security", description: "Enterprise-grade security", included: true },
+          ],
+          billingCycles: ["monthly", "yearly"],
+          trialPeriod: { enabled: true, days: 30 },
+          limits: { maxUsers: null, maxStorage: "Unlimited", maxApiCalls: null, maxProjects: null },
+          isPopular: false,
+          isActive: true,
+          sortOrder: 3,
+          tags: ["enterprise", "large"],
+          createdAt: "2024-01-15T00:00:00.000Z",
+          updatedAt: "2024-01-15T00:00:00.000Z",
+        },
+      ]);
+    } finally {
+      setPlansLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push("/login");
+    } else if (isAuthenticated) {
+      fetchSubscriptionPlans();
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -96,10 +183,10 @@ export default function SubscriptionsPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-4 text-balance">
-            Choose Your Plan
+            Choose Your Subscription Plan
           </h1>
           <p className="text-xl text-muted-foreground text-pretty max-w-2xl mx-auto">
-            Select the perfect plan for your needs. Upgrade or downgrade at any
+            Select the perfect subscription plan for your needs. Upgrade or downgrade at any
             time.
           </p>
         </div>
@@ -127,94 +214,121 @@ export default function SubscriptionsPage() {
           </div>
         </div>
 
-        {/* Product Cards */}
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {mockProducts.map((product) => {
-            const isCurrentPlan = activeSubscription?.productId === product.id;
-            const price = product.price[billingCycle];
+        {/* Subscription Plan Cards */}
+        {plansLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="text-muted-foreground">Loading subscription plans...</div>
+          </div>
+        ) : plansError ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="text-destructive">{plansError}</div>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {subscriptionPlans.map((plan) => {
+              const isCurrentPlan = activeSubscription?.productId === plan._id;
+              const price = billingCycle === "monthly" ? plan.pricing.monthly : plan.pricing.yearly;
 
-            return (
-              <Card
-                key={product.id}
-                className={`relative ${
-                  product.isPopular ? "border-primary shadow-lg" : ""
-                }`}
-              >
-                {product.isPopular && (
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground">
-                      <Star className="w-3 h-3 mr-1" />
-                      Most Popular
-                    </Badge>
-                  </div>
-                )}
-
-                <CardHeader className="text-center">
-                  <CardTitle className="text-2xl">{product.name}</CardTitle>
-                  <CardDescription className="text-pretty">
-                    {product.description}
-                  </CardDescription>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold">${price}</span>
-                    <span className="text-muted-foreground">
-                      /{billingCycle === "monthly" ? "mo" : "yr"}
-                    </span>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <Users className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                      <p className="text-sm font-medium">
-                        {product.maxUsers || "Unlimited"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Users</p>
+              return (
+                <Card
+                  key={plan._id}
+                  className={`relative ${
+                    plan.isPopular ? "border-primary shadow-lg" : ""
+                  }`}
+                >
+                  {plan.isPopular && (
+                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                      <Badge className="bg-primary text-primary-foreground">
+                        <Star className="w-3 h-3 mr-1" />
+                        Most Popular
+                      </Badge>
                     </div>
-                    <div>
-                      <HardDrive className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                      <p className="text-sm font-medium">{product.storage}</p>
-                      <p className="text-xs text-muted-foreground">Storage</p>
-                    </div>
-                    <div>
-                      <Headphones className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                      <p className="text-sm font-medium">{product.support}</p>
-                      <p className="text-xs text-muted-foreground">Support</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="font-medium">Features included:</p>
-                    <ul className="space-y-2">
-                      {product.features.map((feature, index) => (
-                        <li key={index} className="flex items-center text-sm">
-                          <Check className="h-4 w-4 text-primary mr-2 flex-shrink-0" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </CardContent>
-
-                <CardFooter>
-                  {isCurrentPlan ? (
-                    <Button className="w-full" disabled>
-                      Current Plan
-                    </Button>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      variant={product.isPopular ? "default" : "outline"}
-                      onClick={() => handleSubscribe(product.id)}
-                    >
-                      {activeSubscription ? "Switch Plan" : "Get Started"}
-                    </Button>
                   )}
-                </CardFooter>
-              </Card>
-            );
-          })}
-        </div>
+
+                  <CardHeader className="text-center">
+                    <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                    <CardDescription className="text-pretty">
+                      {plan.description}
+                    </CardDescription>
+                    <div className="mt-4">
+                      <span className="text-4xl font-bold">
+                        {plan.pricing.currency} {price}
+                      </span>
+                      <span className="text-muted-foreground">
+                        /{billingCycle === "monthly" ? "mo" : "yr"}
+                      </span>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <Users className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
+                        <p className="text-sm font-medium">
+                          {plan.limits.maxUsers || "Unlimited"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Users</p>
+                      </div>
+                      <div>
+                        <HardDrive className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
+                        <p className="text-sm font-medium">
+                          {plan.limits.maxStorage || "Unlimited"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Storage</p>
+                      </div>
+                      <div>
+                        <Headphones className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
+                        <p className="text-sm font-medium">
+                          {plan.trialPeriod.enabled ? `${plan.trialPeriod.days} days trial` : "No trial"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Trial</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="font-medium">Features included:</p>
+                      <ul className="space-y-2">
+                        {plan.features.map((feature, index) => (
+                          <li key={index} className="flex items-center text-sm">
+                            <Check className="h-4 w-4 text-primary mr-2 flex-shrink-0" />
+                            {feature.name}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="font-medium">Billing cycles:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {plan.billingCycles.map((cycle) => (
+                          <Badge key={cycle} variant="outline" className="text-xs">
+                            {cycle}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+
+                  <CardFooter>
+                    {isCurrentPlan ? (
+                      <Button className="w-full" disabled>
+                        Current Plan
+                      </Button>
+                    ) : (
+                      <Button
+                        className="w-full"
+                        variant={plan.isPopular ? "default" : "outline"}
+                        onClick={() => handleSubscribe(plan._id)}
+                      >
+                        {activeSubscription ? "Switch Plan" : "Get Started"}
+                      </Button>
+                    )}
+                  </CardFooter>
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
         {/* FAQ Section */}
         <div className="mt-16 text-center">
