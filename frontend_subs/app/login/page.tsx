@@ -21,6 +21,21 @@ export default function LoginPage() {
   const { login, loginWithGoogle, loginWithFacebook } = useAuth()
   const router = useRouter()
 
+  const redirectByRole = () => {
+    try {
+      const stored = localStorage.getItem("saas_user")
+      const user = stored ? JSON.parse(stored) : null
+      const role = user?.role
+      if (role === "admin" || role === "superadmin") {
+        router.push("/admin")
+      } else {
+        router.push("/dashboard")
+      }
+    } catch {
+      router.push("/dashboard")
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -29,7 +44,7 @@ export default function LoginPage() {
     try {
       const success = await login(email, password)
       if (success) {
-        router.push("/dashboard")
+        redirectByRole()
       } else {
         setError("Invalid email or password")
       }
@@ -43,8 +58,8 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setIsLoading(true)
     try {
-      await loginWithGoogle()
-      router.push("/dashboard")
+      const ok = await loginWithGoogle()
+      if (ok) redirectByRole()
     } catch {
       setError("Google login failed")
     } finally {
@@ -55,8 +70,8 @@ export default function LoginPage() {
   const handleFacebookLogin = async () => {
     setIsLoading(true)
     try {
-      await loginWithFacebook()
-      router.push("/dashboard")
+      const ok = await loginWithFacebook()
+      if (ok) redirectByRole()
     } catch {
       setError("Facebook login failed")
     } finally {

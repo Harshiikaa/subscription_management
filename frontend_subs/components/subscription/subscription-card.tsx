@@ -1,26 +1,47 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Calendar, CreditCard, Users, HardDrive, TrendingUp } from "lucide-react"
-import type { Subscription, Product } from "@/lib/mock-data"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import type { Product, Subscription } from "@/lib/mock-data";
+import {
+  Calendar,
+  CreditCard,
+  HardDrive,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 
 interface SubscriptionCardProps {
-  subscription: Subscription
-  product: Product
-  onManage?: () => void
-  onUpgrade?: () => void
-  onCancel?: () => void
+  subscription: Subscription;
+  product: Product;
+  onManage?: () => void;
+  onUpgrade?: () => void;
+  onCancel?: () => void;
 }
 
-export function SubscriptionCard({ subscription, product, onManage, onUpgrade, onCancel }: SubscriptionCardProps) {
+export function SubscriptionCard({
+  subscription,
+  product,
+  onManage,
+  onUpgrade,
+  onCancel,
+}: SubscriptionCardProps) {
   const daysUntilRenewal = subscription.nextBilling
-    ? Math.ceil((new Date(subscription.nextBilling).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-    : 0
+    ? Math.ceil(
+        (new Date(subscription.nextBilling).getTime() - new Date().getTime()) /
+          (1000 * 60 * 60 * 24)
+      )
+    : 0;
 
-  const usagePercentage = Math.floor(Math.random() * 80) + 10 // Mock usage data
+  const usagePercentage = Math.floor(Math.random() * 80) + 10; // Mock usage data
 
   return (
     <Card className="w-full">
@@ -38,10 +59,10 @@ export function SubscriptionCard({ subscription, product, onManage, onUpgrade, o
               subscription.status === "active"
                 ? "default"
                 : subscription.status === "cancelled"
-                  ? "destructive"
-                  : subscription.status === "expired"
-                    ? "secondary"
-                    : "outline"
+                ? "destructive"
+                : subscription.status === "expired"
+                ? "secondary"
+                : "outline"
             }
           >
             {subscription.status}
@@ -69,7 +90,9 @@ export function SubscriptionCard({ subscription, product, onManage, onUpgrade, o
               Next Billing
             </div>
             <p className="text-lg font-semibold">
-              {subscription.nextBilling ? new Date(subscription.nextBilling).toLocaleDateString() : "N/A"}
+              {subscription.nextBilling
+                ? new Date(subscription.nextBilling).toLocaleDateString()
+                : "N/A"}
             </p>
             <p className="text-sm text-muted-foreground">
               {daysUntilRenewal > 0 ? `in ${daysUntilRenewal} days` : "Expired"}
@@ -89,7 +112,10 @@ export function SubscriptionCard({ subscription, product, onManage, onUpgrade, o
                   Users
                 </span>
                 <span>
-                  {Math.floor((usagePercentage * (product.maxUsers || 100)) / 100)} / {product.maxUsers || "Unlimited"}
+                  {Math.floor(
+                    (usagePercentage * (product.maxUsers || 100)) / 100
+                  )}{" "}
+                  / {product.maxUsers || "Unlimited"}
                 </span>
               </div>
               <Progress value={usagePercentage} className="h-2" />
@@ -117,7 +143,9 @@ export function SubscriptionCard({ subscription, product, onManage, onUpgrade, o
               Manage Plan
             </Button>
           )}
-          {onUpgrade && subscription.status === "active" && <Button onClick={onUpgrade}>Upgrade</Button>}
+          {onUpgrade && subscription.status === "active" && (
+            <Button onClick={onUpgrade}>Upgrade</Button>
+          )}
           {onCancel && subscription.status === "active" && (
             <Button variant="destructive" onClick={onCancel}>
               Cancel
@@ -126,5 +154,5 @@ export function SubscriptionCard({ subscription, product, onManage, onUpgrade, o
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
