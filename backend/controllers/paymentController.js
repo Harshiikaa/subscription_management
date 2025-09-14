@@ -1,6 +1,8 @@
 const { sendSuccess } = require("../utils/response");
 const AppError = require("../utils/errors");
 const Payment = require("../models/payment");
+const { toRupeesInt, toPaisa } = require("../utils/amount");
+
 const {
   createPaymentService,
   getPaymentService,
@@ -119,20 +121,22 @@ exports.createEsewaPayment = async (req, res, next) => {
   }
 };
 
+
 // Create Khalti payment
 exports.createKhaltiPayment = async (req, res, next) => {
   try {
     const {
       productId,
       subscriptionId,
-      amount,
+      amount, // user may send 12.99
       currency = "NPR",
       customer_info = {},
       amount_breakdown = {},
     } = req.body;
+
     const userId = req.user._id;
 
-    // Determine payment type and validate
+    // Decide payment type
     let paymentType, referenceId;
     if (subscriptionId) {
       paymentType = "subscription";
@@ -146,44 +150,37 @@ exports.createKhaltiPayment = async (req, res, next) => {
       );
     }
 
-    const paymentData = {
+    // ✅ Convert frontend decimal → integer rupees
+    const amountInRupeesInt = Math.round(Number(amount) * 100); // 12.99 → 1299
+
+    const payment = await createPaymentService({
       userId,
       [paymentType === "subscription" ? "subscriptionId" : "productId"]:
         referenceId,
       paymentType,
       paymentMethod: "khalti",
-      amount,
+      amount: amountInRupeesInt, // DB stores 1299
       currency,
-    };
+    });
 
-    const payment = await createPaymentService(paymentData);
+    // ✅ Convert rupees → paisa (1299 → 129900)
+    const amountInPaisa = amountInRupeesInt * 100;
 
-    // Initiate Khalti payment
     const returnUrl = `${
       process.env.KHALTI_RETURN_URL
     }?transaction_uuid=${encodeURIComponent(
       payment.transactionUUID
     )}&order_id=${encodeURIComponent(payment.orderId)}`;
 
+    // Initiate payment
     const khaltiResponse = await initiateKhaltiPayment({
       return_url: returnUrl,
       website_url: process.env.KHALTI_WEBSITE_URL || "http://localhost:3000",
-      amount: payment.amount,
+      amount: amountInPaisa, // send paisa once
       purchase_order_id: payment.orderId,
       purchase_order_name: `${paymentType} payment`,
-      customer_info: {
-        name: customer_info.name || req.user.name || "Customer",
-        email: customer_info.email || req.user.email || "",
-        phone: customer_info.phone || "",
-        ...customer_info,
-      },
-      amount_breakdown: {
-        subtotal: amount_breakdown.subtotal || payment.amount,
-        tax: amount_breakdown.tax || 0,
-        shipping: amount_breakdown.shipping || 0,
-        discount: amount_breakdown.discount || 0,
-        ...amount_breakdown,
-      },
+      customer_info,
+      amount_breakdown: {}, // optional
     });
 
     if (!khaltiResponse.success) {
@@ -192,13 +189,16 @@ exports.createKhaltiPayment = async (req, res, next) => {
       );
     }
 
-    // Update payment with Khalti pidx
+    // Save pidx for lookup later
     await updatePaymentByTransactionUUIDService(payment.transactionUUID, {
       providerRefId: khaltiResponse.data.pidx,
-      gatewayData: {
-        khaltiInitiateResponse: khaltiResponse.data,
-      },
+      gatewayData: { khaltiInitiateResponse: khaltiResponse.data },
     });
+
+    // Debugging logs
+    console.log("💰 User entered (rupees):", amount); // 12.99
+    console.log("💰 Stored in DB (rupees int):", payment.amount); // 1299
+    console.log("💰 Sent to Khalti (paisa):", amountInPaisa); // 129900
 
     return sendSuccess(
       res,
@@ -210,8 +210,8 @@ exports.createKhaltiPayment = async (req, res, next) => {
       },
       "Khalti payment initiated"
     );
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 };
 
@@ -303,15 +303,10 @@ exports.completePayment = async (req, res, next) => {
 };
 
 // Verify Khalti payment
+
 exports.verifyKhaltiPayment = async (req, res, next) => {
   try {
-    const { pidx, transaction_uuid } = req.query;
-
-    // Debug logging
-    console.log("🔍 Khalti verification called with:");
-    console.log("  pidx:", pidx);
-    console.log("  transaction_uuid:", transaction_uuid);
-    console.log("  query params:", req.query);
+    const { pidx, transaction_uuid, order_id } = req.query;
 
     if (!pidx) {
       return res.redirect(
@@ -319,145 +314,68 @@ exports.verifyKhaltiPayment = async (req, res, next) => {
       );
     }
 
-    // Load payment using multiple lookup methods
-    let payment;
-    const orderId = req.query.order_id;
-
-    // Method 1: Try to find by transaction_uuid if provided
+    // 1️⃣ Find the payment
+    let payment = null;
     if (transaction_uuid) {
-      try {
-        payment = await getPaymentByTransactionUUIDService(transaction_uuid);
-        console.log("✅ Payment found by transaction_uuid:", transaction_uuid);
-      } catch (error) {
-        console.log(
-          "⚠️  Payment not found by transaction_uuid:",
-          error.message
-        );
-      }
+      payment = await getPaymentByTransactionUUIDService(transaction_uuid);
     }
-
-    // Method 2: Try to find by pidx if not found yet
+    if (!payment && order_id) {
+      payment = await Payment.findOne({ orderId: order_id });
+    }
     if (!payment && pidx) {
       payment = await Payment.findOne({ providerRefId: pidx });
-      if (payment) {
-        console.log("✅ Payment found by pidx:", pidx);
-      } else {
-        console.log("⚠️  Payment not found by pidx:", pidx);
-      }
     }
-
-    // Method 3: Try to find by order_id if provided and not found yet
-    if (!payment && orderId) {
-      payment = await Payment.findOne({ orderId: orderId });
-      if (payment) {
-        console.log("✅ Payment found by order_id:", orderId);
-      } else {
-        console.log("⚠️  Payment not found by order_id:", orderId);
-      }
-    }
-
-    // Method 4: Try to find by pidx in gatewayData if not found yet
-    if (!payment && pidx) {
-      payment = await Payment.findOne({
-        "gatewayData.khaltiInitiateResponse.pidx": pidx,
-      });
-      if (payment) {
-        console.log("✅ Payment found by pidx in gatewayData:", pidx);
-        // Update providerRefId for future lookups
-        if (!payment.providerRefId) {
-          payment.providerRefId = pidx;
-          await payment.save();
-          console.log("✅ Updated providerRefId for future lookups");
-        }
-      } else {
-        console.log("⚠️  Payment not found by pidx in gatewayData:", pidx);
-      }
-    }
-
-    // If still not found, return error with debugging info
     if (!payment) {
-      console.error("❌ Payment not found by any method");
-      console.error("Search parameters:");
-      console.error("  - transaction_uuid:", transaction_uuid);
-      console.error("  - pidx:", pidx);
-      console.error("  - order_id:", orderId);
-
-      // List recent payments for debugging
-      const recentPayments = await Payment.find({
-        paymentMethod: "khalti",
-      })
-        .sort({ createdAt: -1 })
-        .limit(5)
-        .select("transactionUUID orderId providerRefId createdAt");
-      console.error("Recent Khalti payments:", recentPayments);
-
       return res.redirect(
         "http://localhost:3000/payment/failure?message=Payment%20not%20found"
       );
     }
 
-    // Verify payment with Khalti
-    console.log("🔍 Verifying payment with Khalti using pidx:", pidx);
+    // 2️⃣ Verify with Khalti
     const verifyResponse = await verifyKhaltiPayment(pidx);
-    console.log("🔍 Khalti verification response:", verifyResponse);
-
     if (!verifyResponse.success) {
-      console.error("❌ Khalti verification failed:", verifyResponse.error);
       await failPaymentService(
         payment.transactionUUID,
         "Khalti verification failed"
       );
       return res.redirect(
-        "http://localhost:3000/payment/failure?message=Payment%20verification%20failed"
+        "http://localhost:3000/payment/failure?message=Verification%20failed"
       );
     }
 
-    const { status, amount, transaction_id } = verifyResponse.data;
+    const { status, total_amount, transaction_id } = verifyResponse;
 
-    // Check if payment is completed
-    if (status === "Completed") {
-      const amountMatches = Number(amount) / 100 === Number(payment.amount); // Convert from paisa
+    // 3️⃣ Compare amounts
+    const expectedPaisa = payment.amount * 100; // DB rupeesInt → paisa
 
-      if (amountMatches) {
-        const gatewayData = {
-          khaltiVerifyResponse: verifyResponse.data,
-          pidx: pidx,
-          transaction_id: transaction_id,
-        };
+    console.log("🔎 Amount check:", {
+      khalti_total_amount: Number(total_amount),
+      expected_paisa: expectedPaisa,
+      db_rupeesInt: payment.amount,
+    });
 
-        await completePaymentService(
-          payment.transactionUUID,
-          transaction_id,
-          gatewayData
-        );
-
-        return res.redirect(
-          `http://localhost:3000/payment/success?transactionId=${encodeURIComponent(
-            transaction_id || ""
-          )}&message=${encodeURIComponent("Payment verified successfully")}`
-        );
-      } else {
-        await failPaymentService(payment.transactionUUID, "Amount mismatch");
-        return res.redirect(
-          "http://localhost:3000/payment/failure?message=Amount%20mismatch"
-        );
-      }
-    } else {
-      const reason =
-        status === "Pending" ? "Payment is still pending" : "Payment failed";
-      await failPaymentService(payment.transactionUUID, reason);
+    // 4️⃣ Finalize payment
+    if (status === "Completed" && Number(total_amount) === expectedPaisa) {
+      await completePaymentService(payment.transactionUUID, transaction_id, {
+        khaltiVerifyResponse: verifyResponse.data,
+        pidx,
+        transaction_id,
+      });
       return res.redirect(
-        `http://localhost:3000/payment/failure?message=${encodeURIComponent(
-          reason
-        )}`
+        `http://localhost:3000/payment/success?transactionId=${encodeURIComponent(
+          transaction_id
+        )}&message=Payment%20verified%20successfully`
+      );
+    } else {
+      await failPaymentService(payment.transactionUUID, "Amount mismatch");
+      return res.redirect(
+        "http://localhost:3000/payment/failure?message=Amount%20mismatch"
       );
     }
   } catch (error) {
-    console.error("Khalti Payment Verification Error:", error);
+    console.error("Khalti Verification Error:", error);
     return res.redirect(
-      `http://localhost:3000/payment/failure?message=${encodeURIComponent(
-        "Server%20error"
-      )}`
+      "http://localhost:3000/payment/failure?message=Server%20error"
     );
   }
 };

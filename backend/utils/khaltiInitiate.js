@@ -12,10 +12,84 @@ const axios = require("axios");
  * @param {Object} paymentData.amount_breakdown - Amount breakdown
  * @returns {Promise<Object>} Khalti payment response
  */
+// async function initiateKhaltiPayment({
+//   return_url,
+//   website_url,
+//   amount,
+//   purchase_order_id,
+//   purchase_order_name,
+//   customer_info = {},
+//   amount_breakdown = {},
+// }) {
+//   try {
+//     const khaltiUrl =
+//       process.env.KHALTI_BASE_URL ||
+//       "https://a.khalti.com/api/v2/epayment/initiate/";
+
+//     const payload = {
+//       return_url,
+//       website_url,
+//       amount: Math.round(amount * 100), // Convert to paisa
+//       purchase_order_id,
+//       purchase_order_name,
+//       customer_info: {
+//         name: customer_info.name || "Customer",
+//         email: customer_info.email || "",
+//         phone: customer_info.phone || "",
+//         ...customer_info,
+//       },
+//       amount_breakdown: [
+//         {
+//           label: "Subtotal",
+//           amount: Math.round((amount_breakdown.subtotal || amount) * 100),
+//         },
+//         {
+//           label: "Tax",
+//           amount: Math.round((amount_breakdown.tax || 0) * 100),
+//         },
+//         {
+//           label: "Shipping",
+//           amount: Math.round((amount_breakdown.shipping || 0) * 100),
+//         },
+//         {
+//           label: "Discount",
+//           amount: Math.round((amount_breakdown.discount || 0) * 100),
+//         },
+//       ],
+//     };
+
+//     const response = await axios.post(khaltiUrl, payload, {
+//       headers: {
+//         Authorization: `Key ${process.env.KHALTI_SECRET_KEY}`,
+//         "Content-Type": "application/json",
+//       },
+//       timeout: 30000,
+//     });
+
+//     return {
+//       success: true,
+//       data: response.data,
+//       payment_url: response.data.payment_url,
+//       pidx: response.data.pidx,
+//     };
+//   } catch (error) {
+//     console.error(
+//       "Khalti payment initiation error:",
+//       error.response?.data || error.message
+//     );
+//     return {
+//       success: false,
+//       error: error.response?.data || { message: error.message },
+//     };
+//   }
+// }
+
+// module.exports = initiateKhaltiPayment;
+
 async function initiateKhaltiPayment({
   return_url,
   website_url,
-  amount,
+  amount, // already paisa from controller
   purchase_order_id,
   purchase_order_name,
   customer_info = {},
@@ -29,7 +103,7 @@ async function initiateKhaltiPayment({
     const payload = {
       return_url,
       website_url,
-      amount: Math.round(amount * 100), // Convert to paisa
+      amount: Math.round(amount), // ✅ DO NOT *100 again
       purchase_order_id,
       purchase_order_name,
       customer_info: {
@@ -41,19 +115,19 @@ async function initiateKhaltiPayment({
       amount_breakdown: [
         {
           label: "Subtotal",
-          amount: Math.round((amount_breakdown.subtotal || amount) * 100),
+          amount: Math.round(amount_breakdown.subtotal || amount),
         },
         {
           label: "Tax",
-          amount: Math.round((amount_breakdown.tax || 0) * 100),
+          amount: Math.round(amount_breakdown.tax || 0),
         },
         {
           label: "Shipping",
-          amount: Math.round((amount_breakdown.shipping || 0) * 100),
+          amount: Math.round(amount_breakdown.shipping || 0),
         },
         {
           label: "Discount",
-          amount: Math.round((amount_breakdown.discount || 0) * 100),
+          amount: Math.round(amount_breakdown.discount || 0),
         },
       ],
     };

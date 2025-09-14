@@ -23,12 +23,6 @@ const {
 } = require("../controllers/paymentController");
 
 const router = express.Router();
-// ////////////////////////////////////
-// router.post("/createPayment", authenticate, createPayment);
-// router.all("/completePayment", completePayment);
-// router.get("/payment/success", success);
-// router.get("/payment/failure", failure);
-// /////////////////////////////////////////
 
 router.post("/product", authenticate, createProductPayment);
 router.post("/esewa", authenticate, createEsewaPayment); // Legacy eSewa payment

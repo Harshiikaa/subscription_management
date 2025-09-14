@@ -1,10 +1,6 @@
 const axios = require("axios");
 
-/**
- * Verify Khalti payment using pidx
- * @param {string} pidx - Payment ID from Khalti
- * @returns {Promise<Object>} Payment verification response
- */
+
 async function verifyKhaltiPayment(pidx) {
   try {
     const khaltiUrl =
@@ -22,13 +18,15 @@ async function verifyKhaltiPayment(pidx) {
         timeout: 30000,
       }
     );
+    console.log("Khalti total amt in utils: ", response.data.total_amount);
 
+    // ✅ Only return the fields you actually need
     return {
       success: true,
-      data: response.data,
       status: response.data.status,
-      amount: response.data.amount,
+      total_amount: Number(response.data.total_amount), // always paisa
       transaction_id: response.data.transaction_id,
+      raw: response.data, // keep raw in case you want to debug
     };
   } catch (error) {
     console.error(
