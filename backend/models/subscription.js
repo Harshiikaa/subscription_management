@@ -7,9 +7,21 @@ const subscriptionSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    // Either productId or subscriptionPlanId must be provided, but not both
     productId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
+      required: false,
+    },
+    subscriptionPlanId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "SubscriptionPlan",
+      required: false,
+    },
+    // Subscription type to distinguish between product and plan subscriptions
+    subscriptionType: {
+      type: String,
+      enum: ["product", "plan"],
       required: true,
     },
     status: {
@@ -19,13 +31,18 @@ const subscriptionSchema = new mongoose.Schema(
     },
     billingCycle: {
       type: String,
-      enum: ["monthly", "yearly"],
+      enum: ["monthly", "yearly", "quarterly", "weekly"],
       required: true,
     },
     amount: {
       type: Number,
       required: true,
       min: 0,
+    },
+    currency: {
+      type: String,
+      enum: ["USD", "EUR", "GBP", "NPR"],
+      default: "USD",
     },
     startDate: {
       type: Date,
@@ -88,10 +105,13 @@ const subscriptionSchema = new mongoose.Schema(
 // Indexes for better query performance
 subscriptionSchema.index({ userId: 1 });
 subscriptionSchema.index({ productId: 1 });
+subscriptionSchema.index({ subscriptionPlanId: 1 });
+subscriptionSchema.index({ subscriptionType: 1 });
 subscriptionSchema.index({ status: 1 });
 subscriptionSchema.index({ nextBilling: 1 });
 subscriptionSchema.index({ endDate: 1 });
 subscriptionSchema.index({ userId: 1, status: 1 });
+subscriptionSchema.index({ userId: 1, subscriptionType: 1 });
 
 // Virtual for days remaining
 subscriptionSchema.virtual("daysRemaining").get(function () {
@@ -116,6 +136,28 @@ subscriptionSchema.virtual("isInTrial").get(function () {
   );
 });
 
+// Pre-save middleware to validate subscription type and references
+subscriptionSchema.pre("save", function (next) {
+  // Validate that either productId or subscriptionPlanId is provided, but not both
+  if (this.subscriptionType === "product" && !this.productId) {
+    return next(new Error("productId is required for product subscriptions"));
+  }
+  if (this.subscriptionType === "plan" && !this.subscriptionPlanId) {
+    return next(
+      new Error("subscriptionPlanId is required for plan subscriptions")
+    );
+  }
+  if (this.productId && this.subscriptionPlanId) {
+    return next(new Error("Cannot have both productId and subscriptionPlanId"));
+  }
+  if (!this.productId && !this.subscriptionPlanId) {
+    return next(
+      new Error("Either productId or subscriptionPlanId must be provided")
+    );
+  }
+  next();
+});
+
 // Pre-save middleware to calculate next billing date
 subscriptionSchema.pre("save", function (next) {
   if (
@@ -124,7 +166,24 @@ subscriptionSchema.pre("save", function (next) {
     this.isModified("startDate")
   ) {
     const startDate = new Date(this.startDate);
-    const billingInterval = this.billingCycle === "monthly" ? 30 : 365;
+    let billingInterval;
+
+    switch (this.billingCycle) {
+      case "weekly":
+        billingInterval = 7;
+        break;
+      case "monthly":
+        billingInterval = 30;
+        break;
+      case "quarterly":
+        billingInterval = 90;
+        break;
+      case "yearly":
+        billingInterval = 365;
+        break;
+      default:
+        billingInterval = 30;
+    }
 
     this.nextBilling = new Date(
       startDate.getTime() + billingInterval * 24 * 60 * 60 * 1000
@@ -140,12 +199,28 @@ subscriptionSchema.statics.findActiveByUser = function (userId) {
     userId,
     status: { $in: ["active", "trial"] },
     endDate: { $gt: new Date() },
-  }).populate("productId");
+  }).populate("productId subscriptionPlanId");
 };
 
 // Static method to find subscriptions by product
 subscriptionSchema.statics.findByProduct = function (productId) {
-  return this.find({ productId }).populate("userId");
+  return this.find({ productId, subscriptionType: "product" }).populate(
+    "userId"
+  );
+};
+
+// Static method to find subscriptions by plan
+subscriptionSchema.statics.findByPlan = function (subscriptionPlanId) {
+  return this.find({ subscriptionPlanId, subscriptionType: "plan" }).populate(
+    "userId"
+  );
+};
+
+// Static method to find subscriptions by type
+subscriptionSchema.statics.findByType = function (subscriptionType) {
+  return this.find({ subscriptionType }).populate(
+    "userId productId subscriptionPlanId"
+  );
 };
 
 // Static method to find expiring subscriptions
@@ -156,7 +231,7 @@ subscriptionSchema.statics.findExpiring = function (days = 7) {
   return this.find({
     status: "active",
     endDate: { $lte: futureDate, $gt: new Date() },
-  }).populate("userId productId");
+  }).populate("userId productId subscriptionPlanId");
 };
 
 // Static method to create subscription from product
@@ -181,6 +256,7 @@ subscriptionSchema.statics.createFromProduct = async function (
   const existingSubscription = await this.findOne({
     userId,
     productId,
+    subscriptionType: "product",
     status: { $in: ["active", "trial"] },
   });
 
@@ -194,6 +270,48 @@ subscriptionSchema.statics.createFromProduct = async function (
   });
 
   subscriptionData.paymentMethod = paymentMethod;
+  subscriptionData.subscriptionType = "product";
+
+  return await this.create(subscriptionData);
+};
+
+// Static method to create subscription from plan
+subscriptionSchema.statics.createFromPlan = async function (
+  subscriptionPlanId,
+  userId,
+  billingCycle,
+  paymentMethod
+) {
+  const SubscriptionPlan = require("./subscriptionPlan");
+  const plan = await SubscriptionPlan.findById(subscriptionPlanId);
+
+  if (!plan) {
+    throw new Error("Subscription plan not found");
+  }
+
+  if (!plan.isAvailable()) {
+    throw new Error("Plan is not available for subscription");
+  }
+
+  // Check if user already has an active subscription for this plan
+  const existingSubscription = await this.findOne({
+    userId,
+    subscriptionPlanId,
+    subscriptionType: "plan",
+    status: { $in: ["active", "trial"] },
+  });
+
+  if (existingSubscription) {
+    throw new Error("User already has an active subscription for this plan");
+  }
+
+  const subscriptionData = plan.validateSubscription({
+    billingCycle,
+    userId,
+  });
+
+  subscriptionData.paymentMethod = paymentMethod;
+  subscriptionData.subscriptionType = "plan";
 
   return await this.create(subscriptionData);
 };
@@ -213,7 +331,24 @@ subscriptionSchema.methods.renew = function () {
     throw new Error("Only active subscriptions can be renewed");
   }
 
-  const billingInterval = this.billingCycle === "monthly" ? 30 : 365;
+  let billingInterval;
+  switch (this.billingCycle) {
+    case "weekly":
+      billingInterval = 7;
+      break;
+    case "monthly":
+      billingInterval = 30;
+      break;
+    case "quarterly":
+      billingInterval = 90;
+      break;
+    case "yearly":
+      billingInterval = 365;
+      break;
+    default:
+      billingInterval = 30;
+  }
+
   const newEndDate = new Date(
     this.endDate.getTime() + billingInterval * 24 * 60 * 60 * 1000
   );
