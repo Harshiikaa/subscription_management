@@ -1,89 +1,119 @@
-const Products = require("../models/product");
-const Payment = require("../models/payment");
+const { sendSuccess } = require("../utils/response");
+const AppError = require("../utils/errors");
+const {
+  createPaymentService,
+  getPaymentService,
+  getPaymentByTransactionUUIDService,
+  getPaymentsByUserService,
+  getPaymentsBySubscriptionService,
+  getPaymentsByProductService,
+  getCompletedPaymentsService,
+  updatePaymentStatusService,
+  completePaymentService,
+  failPaymentService,
+  processRefundService,
+  deletePaymentService,
+  getPaymentStatsService,
+} = require("../services/paymentService");
 const getEsewaPaymentHash = require("../utils/esewaSignature");
 const verifyReturnSignature = require("../utils/esewaVerifySignature");
 const esewaStatusCheck = require("../utils/esewaStatusCheck");
 
-exports.createPayment = async (req, res) => {
+// Create payment for subscription
+exports.createSubscriptionPayment = async (req, res, next) => {
   try {
-    const { productID, deliveryDate, returnDate, quantity } = req.body;
+    const userId = req.user._id;
+    const {
+      subscriptionId,
+      paymentMethod,
+      amount,
+      currency = "USD",
+    } = req.body;
 
-    const product = await Products.findById(productID);
-    if (!product) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Product not found" });
-    }
+    const paymentData = {
+      userId,
+      subscriptionId,
+      paymentType: "subscription",
+      paymentMethod,
+      amount,
+      currency,
+    };
 
-    // ✅ Server-side amount calculation (adjust to your policy)
-    const days = Math.max(
-      1,
-      Math.ceil(
-        (new Date(returnDate) - new Date(deliveryDate)) / (1000 * 60 * 60 * 24)
-      )
-    );
-    const qty = Number(quantity || 1);
-    const base = Number(product.productRentalPrice) * days * qty;
-    const deposit = Number(product.productSecurityDeposit || 0);
-    const product_service_charge = 0;
-    const product_delivery_charge = 0;
-    const tax_amount = 0;
-    const total =
-      base +
-      deposit +
-      product_service_charge +
-      product_delivery_charge +
-      tax_amount;
+    const payment = await createPaymentService(paymentData);
+    return sendSuccess(res, payment, "Payment created", 201);
+  } catch (error) {
+    next(error);
+  }
+};
 
-    const shoppingBag = await ShoppingBag.create({
-      userID: req.user.id,
-      productID,
-      deliveryDate,
-      returnDate,
-      quantity: qty,
-      totalPrice: total, // canonical amount stored by server
-    });
+// Create payment for product
+exports.createProductPayment = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { productId, paymentMethod, amount, currency = "USD" } = req.body;
 
-    // ✅ Create Payment=pending (anchor the attempt)
-    const paymentPending = await Payment.create({
-      userId: req.user.id,
-      orderId: shoppingBag._id,
-      transactionUUID: shoppingBag._id.toString(), // hex is alnum (valid)
-      amount: total,
-      currency: "NPR",
-      status: "pending",
-      provider: "esewa",
-    });
+    const paymentData = {
+      userId,
+      productId,
+      paymentType: "product",
+      paymentMethod,
+      amount,
+      currency,
+    };
 
-    // Sign exactly the required fields (request payload)
+    const payment = await createPaymentService(paymentData);
+    return sendSuccess(res, payment, "Payment created", 201);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Create eSewa payment (legacy method for backward compatibility)
+exports.createEsewaPayment = async (req, res, next) => {
+  try {
+    const { productId, amount, currency = "NPR" } = req.body;
+    const userId = req.user._id;
+
+    const paymentData = {
+      userId,
+      productId,
+      paymentType: "product",
+      paymentMethod: "esewa",
+      amount,
+      currency,
+    };
+
+    const payment = await createPaymentService(paymentData);
+
+    // Generate eSewa payment hash
     const signed = getEsewaPaymentHash({
-      amount: total,
-      tax_amount,
-      total_amount: total,
-      product_service_charge,
-      product_delivery_charge,
-      transaction_uuid: paymentPending.transactionUUID,
+      amount: payment.amount,
+      tax_amount: 0,
+      total_amount: payment.amount,
+      product_service_charge: 0,
+      product_delivery_charge: 0,
+      transaction_uuid: payment.transactionUUID,
       product_code: process.env.ESEWA_MERCHANT_CODE,
       success_url: process.env.ESEWA_SUCCESS_URL,
       failure_url: process.env.ESEWA_FAILURE_URL,
     });
 
-    res.status(200).json({
-      success: true,
-      payment: {
+    return sendSuccess(
+      res,
+      {
         ...signed,
         esewa_initiate_url: process.env.ESEWA_FORM_URL,
+        paymentId: payment._id,
       },
-    });
+      "eSewa payment initiated"
+    );
   } catch (error) {
-    console.log(error);
-    res
-      .status(500)
-      .json({ success: false, message: "Error initializing payment" });
+    next(error);
   }
 };
 
-exports.completePayment = async (req, res) => {
+// Complete payment (eSewa callback)
+exports.completePayment = async (req, res, next) => {
   try {
     // Accept GET or POST return
     const dataB64 = (req.body && req.body.data) || req.query.data;
@@ -97,7 +127,6 @@ exports.completePayment = async (req, res) => {
     const decoded = JSON.parse(
       Buffer.from(dataB64, "base64").toString("utf-8")
     );
-    // Example: { transaction_code, status, total_amount, transaction_uuid, product_code, signed_field_names, signature }
 
     // 2) Verify the return signature (defense-in-depth)
     const okSig = verifyReturnSignature({
@@ -113,20 +142,14 @@ exports.completePayment = async (req, res) => {
 
     // 3) Load our PENDING payment by transaction_uuid
     const txnUUID = decoded.transaction_uuid;
-    const payment = await Payment.findOne({ transactionUUID: txnUUID });
-    if (!payment) {
-      return res.redirect(
-        "http://localhost:3000/payment/failure?message=Unknown%20transaction"
-      );
-    }
+    const payment = await getPaymentByTransactionUUIDService(txnUUID);
 
     // 4) SERVER→SERVER verification (Status Check)
     const statusData = await esewaStatusCheck({
       product_code: process.env.ESEWA_MERCHANT_CODE,
-      total_amount: payment.amount, // use your stored canonical amount
+      total_amount: payment.amount,
       transaction_uuid: txnUUID,
     });
-    // statusData: { product_code, transaction_uuid, total_amount, status, ref_id }
 
     const amountMatches =
       Number(statusData.total_amount) === Number(payment.amount);
@@ -134,37 +157,37 @@ exports.completePayment = async (req, res) => {
 
     // 5) Idempotent update + redirect to your React routes
     if (isComplete && amountMatches) {
-      if (payment.status !== "paid") {
-        payment.status = "paid";
-        payment.esewaRefId =
-          statusData.ref_id || decoded.transaction_code || null;
-        payment.rawReturn = decoded;
-        payment.statusCheckResponse = statusData;
-        await payment.save();
-      }
+      const gatewayData = {
+        rawReturn: decoded,
+        statusCheckResponse: statusData,
+        signature: decoded.signature,
+      };
+
+      await completePaymentService(
+        txnUUID,
+        statusData.ref_id || decoded.transaction_code,
+        gatewayData
+      );
+
       return res.redirect(
         `http://localhost:3000/payment/success?transactionId=${encodeURIComponent(
-          payment.esewaRefId || decoded.transaction_code || ""
+          statusData.ref_id || decoded.transaction_code || ""
         )}&message=${encodeURIComponent("Payment verified")}`
       );
     }
 
     // Pending or failed paths
-    payment.status =
+    const reason =
       statusData.status === "pending" || statusData.status === "ambiguous"
-        ? "pending"
-        : "FAILED";
-    payment.rawReturn = decoded;
-    payment.statusCheckResponse = statusData;
-    await payment.save();
-
-    const msg =
-      statusData.status === "pending"
         ? "Payment pending. Please wait or refresh."
         : "Payment verification failed";
 
+    await failPaymentService(txnUUID, reason);
+
     return res.redirect(
-      `http://localhost:3000/payment/failure?message=${encodeURIComponent(msg)}`
+      `http://localhost:3000/payment/failure?message=${encodeURIComponent(
+        reason
+      )}`
     );
   } catch (error) {
     console.error("Payment Error:", error);
@@ -173,6 +196,130 @@ exports.completePayment = async (req, res) => {
         "Server%20error"
       )}`
     );
+  }
+};
+
+// Get payment by ID
+exports.getPayment = async (req, res, next) => {
+  try {
+    const payment = await getPaymentService(req.params.paymentId);
+    return sendSuccess(res, payment, "Payment fetched");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get payments by user
+exports.getUserPayments = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const options = {
+      paymentType: req.query.paymentType,
+      status: req.query.status,
+      page: req.query.page ? Number(req.query.page) : 1,
+      limit: req.query.limit ? Number(req.query.limit) : 20,
+    };
+
+    const data = await getPaymentsByUserService(userId, options);
+    return sendSuccess(res, data, "User payments fetched");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get payments by subscription
+exports.getSubscriptionPayments = async (req, res, next) => {
+  try {
+    const payments = await getPaymentsBySubscriptionService(
+      req.params.subscriptionId
+    );
+    return sendSuccess(res, payments, "Subscription payments fetched");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get payments by product
+exports.getProductPayments = async (req, res, next) => {
+  try {
+    const payments = await getPaymentsByProductService(req.params.productId);
+    return sendSuccess(res, payments, "Product payments fetched");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get completed payments (admin)
+exports.getCompletedPayments = async (req, res, next) => {
+  try {
+    const options = {
+      startDate: req.query.startDate,
+      endDate: req.query.endDate,
+      limit: req.query.limit ? Number(req.query.limit) : 100,
+    };
+
+    const payments = await getCompletedPaymentsService(options);
+    return sendSuccess(res, payments, "Completed payments fetched");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update payment status
+exports.updatePaymentStatus = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    const additionalData = req.body.additionalData || {};
+
+    const payment = await updatePaymentStatusService(
+      req.params.paymentId,
+      status,
+      additionalData
+    );
+    return sendSuccess(res, payment, "Payment status updated");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Process refund
+exports.processRefund = async (req, res, next) => {
+  try {
+    const { refundAmount, reason } = req.body;
+
+    const payment = await processRefundService(
+      req.params.paymentId,
+      refundAmount,
+      reason
+    );
+    return sendSuccess(res, payment, "Refund processed");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Delete payment
+exports.deletePayment = async (req, res, next) => {
+  try {
+    const payment = await deletePaymentService(req.params.paymentId);
+    return sendSuccess(res, payment, "Payment deleted");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get payment statistics
+exports.getPaymentStats = async (req, res, next) => {
+  try {
+    const options = {
+      startDate: req.query.startDate,
+      endDate: req.query.endDate,
+    };
+
+    const stats = await getPaymentStatsService(options);
+    return sendSuccess(res, stats, "Payment statistics fetched");
+  } catch (error) {
+    next(error);
   }
 };
 

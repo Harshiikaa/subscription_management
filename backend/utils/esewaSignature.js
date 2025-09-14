@@ -1,7 +1,7 @@
 const crypto = require("crypto");
-const Products = require("../model/productModel");
-const ShoppingBag = require("../model/shoppingBagModel");
-const Payment = require("../model/paymentModel");
+const Products = require("../models/product");
+// const ShoppingBag = require("../model/shoppingBagModel");
+const Payment = require("../models/payment");
 
 const getEsewaPaymentHash = ({
   amount,

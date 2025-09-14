@@ -6,6 +6,7 @@ const authRoute = require("./routes/authRoute");
 const productRoute = require("./routes/productRoute");
 const subscriptionRoute = require("./routes/subscriptionRoute");
 const subscriptionPlanRoute = require("./routes/subscriptionPlanRoute");
+const paymentRoute = require("./routes/paymentRoute");
 const errorHandler = require("./middlewares/errorHandler");
 
 const { seedMockProductsService } = require("./services/productService");
@@ -27,6 +28,7 @@ app.use("/api/auth", authRoute);
 app.use("/api/products", productRoute);
 app.use("/api/subscriptions", subscriptionRoute);
 app.use("/api/subscription-plans", subscriptionPlanRoute);
+app.use("/api/payments", paymentRoute);
 
 // Basic route
 app.get("/", (req, res) => {

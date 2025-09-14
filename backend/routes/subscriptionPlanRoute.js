@@ -46,8 +46,8 @@ router.get("/active", getActivePlans);
 // Public: get subscription options for a specific plan
 router.get("/:planId/options", getSubscriptionOptions);
 
-// Admin: get specific plan (including inactive)
-router.get("/:planId", authenticate, requireAdmin, getSubscriptionPlan);
+// Public: get specific plan (active plans only)
+router.get("/:planId", getSubscriptionPlan);
 
 // Admin: update subscription plan
 router.put("/:planId", authenticate, requireAdmin, updateSubscriptionPlan);

@@ -211,10 +211,21 @@ exports.deleteSubscriptionPlanService = async (adminId, planId) => {
 };
 
 exports.getSubscriptionPlanService = async (planId) => {
-  const plan = await getSubscriptionPlanByIdRepo(planId);
-  if (!plan || !plan.isActive)
-    throw AppError.notFound("Subscription plan not found");
-  return plan;
+  try {
+    const plan = await getSubscriptionPlanByIdRepo(planId);
+    if (!plan) {
+      throw AppError.notFound("Subscription plan not found");
+    }
+    if (!plan.isActive) {
+      throw AppError.notFound("Subscription plan is not active");
+    }
+    return plan;
+  } catch (error) {
+    if (error.name === "CastError") {
+      throw AppError.badRequest("Invalid subscription plan ID");
+    }
+    throw error;
+  }
 };
 
 exports.listSubscriptionPlansService = async (query) => {

@@ -42,6 +42,7 @@ export default function BillingPage() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("1")
   const [productData, setProductData] = useState<any>(null)
   const [planData, setPlanData] = useState<any>(null)
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null)
 
   const productId = searchParams.get("product")
   const planId = searchParams.get("plan")
@@ -91,7 +92,8 @@ export default function BillingPage() {
 
     setIsCreatingSubscription(true)
     try {
-      const response = await fetch(
+      // First, create the subscription
+      const subscriptionResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/subscriptions/product`,
         {
           method: "POST",
@@ -107,15 +109,96 @@ export default function BillingPage() {
         }
       )
 
-      if (response.ok) {
-        const result = await response.json()
-        console.log("Subscription created:", result)
-        router.push("/dashboard/subscriptions?success=true")
-      } else {
-        const error = await response.json()
+      if (!subscriptionResponse.ok) {
+        const error = await subscriptionResponse.json()
         console.error("Failed to create subscription:", error)
         alert("Failed to create subscription. Please try again.")
+        return
       }
+
+      const subscriptionResult = await subscriptionResponse.json()
+      console.log("Subscription created:", subscriptionResult)
+
+      // Get the payment amount from product or plan data
+      const paymentAmount = productData?.price?.[billingCycle] || planData?.pricing?.[billingCycle] || 0
+      
+      // Create eSewa payment
+      const paymentResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/payments/esewa`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            productId,
+            amount: paymentAmount,
+            currency: "NPR", // eSewa uses NPR
+          }),
+        }
+      )
+
+      if (!paymentResponse.ok) {
+        const error = await paymentResponse.json()
+        console.error("Failed to create payment:", error)
+        alert("Failed to create payment. Please try again.")
+        return
+      }
+
+      const paymentResult = await paymentResponse.json()
+      console.log("Payment created:", paymentResult)
+
+      // Redirect to eSewa payment page
+      if (paymentResult.data?.esewa_initiate_url) {
+        // Create a form to submit to eSewa
+        const form = document.createElement('form')
+        form.method = 'POST'
+        form.action = paymentResult.data.esewa_initiate_url
+        form.target = '_blank'
+
+        // Add all the required fields for eSewa
+        const fields = {
+          amount: paymentResult.data.amount,
+          tax_amount: paymentResult.data.tax_amount,
+          total_amount: paymentResult.data.total_amount,
+          transaction_uuid: paymentResult.data.transaction_uuid,
+          product_code: paymentResult.data.product_code,
+          product_service_charge: paymentResult.data.product_service_charge,
+          product_delivery_charge: paymentResult.data.product_delivery_charge,
+          success_url: paymentResult.data.success_url,
+          failure_url: paymentResult.data.failure_url,
+          signed_field_names: paymentResult.data.signed_field_names,
+          signature: paymentResult.data.signature,
+        }
+
+        // Add fields to form
+        Object.entries(fields).forEach(([key, value]) => {
+          const input = document.createElement('input')
+          input.type = 'hidden'
+          input.name = key
+          input.value = value
+          form.appendChild(input)
+        })
+
+        // Submit form
+        document.body.appendChild(form)
+        form.submit()
+        document.body.removeChild(form)
+
+        // Show success message
+        setPaymentStatus("Redirecting to eSewa for payment...")
+        setTimeout(() => {
+          setPaymentStatus(null)
+        }, 3000)
+      } else {
+        console.error("No eSewa URL provided")
+        setPaymentStatus("Payment created but no payment URL provided.")
+        setTimeout(() => {
+          setPaymentStatus(null)
+        }, 5000)
+      }
+
     } catch (error) {
       console.error("Error creating subscription:", error)
       alert("An error occurred. Please try again.")
@@ -319,6 +402,18 @@ export default function BillingPage() {
               </Card>
             )}
 
+            {/* Payment Status */}
+            {paymentStatus && (
+              <Card className="mt-6 border-blue-200 bg-blue-50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <p className="text-sm text-blue-800">{paymentStatus}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Subscription Creation Button */}
             {productId && planId && (
               <Card className="mt-6">
@@ -329,13 +424,18 @@ export default function BillingPage() {
                       <p className="text-sm text-muted-foreground">
                         Complete your subscription with the selected payment method
                       </p>
+                      {productData && planData && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Amount: {productData.currency || "USD"} {productData.price?.[billingCycle] || planData.pricing?.[billingCycle] || 0}
+                        </p>
+                      )}
                     </div>
                     <Button 
                       onClick={handleCreateSubscription}
-                      disabled={isCreatingSubscription}
+                      disabled={isCreatingSubscription || !productData || !planData}
                       size="lg"
                     >
-                      {isCreatingSubscription ? "Creating..." : "Complete Subscription"}
+                      {isCreatingSubscription ? "Processing..." : "Complete Subscription"}
                     </Button>
                   </div>
                 </CardContent>
