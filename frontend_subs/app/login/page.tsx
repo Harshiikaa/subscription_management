@@ -1,90 +1,101 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useAuth } from "@/contexts/auth-context"
-import { Loader2, Mail, Lock, Chrome, Facebook } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/auth-context";
+import { Chrome, Facebook, Loader2, Lock, Mail } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  const { login, loginWithGoogle, loginWithFacebook } = useAuth()
-  const router = useRouter()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { login, loginWithGoogle, loginWithFacebook } = useAuth();
+  const router = useRouter();
 
   const redirectByRole = () => {
     try {
-      const stored = localStorage.getItem("saas_user")
-      const user = stored ? JSON.parse(stored) : null
-      const role = user?.role
+      const stored = localStorage.getItem("saas_user");
+      const user = stored ? JSON.parse(stored) : null;
+      const role = user?.role;
       if (role === "admin" || role === "superadmin") {
-        router.push("/admin")
+        router.push("/admin/dashboard");
       } else {
-        router.push("/dashboard")
+        router.push("/dashboard");
       }
     } catch {
-      router.push("/dashboard")
+      router.push("/dashboard");
     }
-  }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
     try {
-      const success = await login(email, password)
+      const success = await login(email, password);
       if (success) {
-        redirectByRole()
+        redirectByRole();
       } else {
-        setError("Invalid email or password")
+        setError("Invalid email or password");
       }
     } catch {
-      setError("An error occurred. Please try again.")
+      setError("An error occurred. Please try again.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleGoogleLogin = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const ok = await loginWithGoogle()
-      if (ok) redirectByRole()
+      const ok = await loginWithGoogle();
+      if (ok) redirectByRole();
     } catch {
-      setError("Google login failed")
+      setError("Google login failed");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleFacebookLogin = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const ok = await loginWithFacebook()
-      if (ok) redirectByRole()
+      const ok = await loginWithFacebook();
+      if (ok) redirectByRole();
     } catch {
-      setError("Facebook login failed")
+      setError("Facebook login failed");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-balance">Welcome Back</CardTitle>
-          <CardDescription className="text-pretty">Sign in to your account to continue</CardDescription>
+          <CardTitle className="text-2xl font-bold text-balance">
+            Welcome Back
+          </CardTitle>
+          <CardDescription className="text-pretty">
+            Sign in to your account to continue
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
@@ -137,16 +148,26 @@ export default function LoginPage() {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with
+              </span>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline" onClick={handleGoogleLogin} disabled={isLoading}>
+            <Button
+              variant="outline"
+              onClick={handleGoogleLogin}
+              disabled={isLoading}
+            >
               <Chrome className="mr-2 h-4 w-4" />
               Google
             </Button>
-            <Button variant="outline" onClick={handleFacebookLogin} disabled={isLoading}>
+            <Button
+              variant="outline"
+              onClick={handleFacebookLogin}
+              disabled={isLoading}
+            >
               <Facebook className="mr-2 h-4 w-4" />
               Facebook
             </Button>
@@ -161,12 +182,6 @@ export default function LoginPage() {
           </p>
         </CardFooter>
       </Card>
-
-      <div className="absolute top-4 right-4 text-xs text-muted-foreground">
-        <p>Demo credentials:</p>
-        <p>Admin: admin@saas.com / password123</p>
-        <p>User: user@example.com / password123</p>
-      </div>
     </div>
-  )
+  );
 }
