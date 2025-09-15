@@ -18,6 +18,7 @@ const {
   getActiveSubscriptions,
   getExpiringSubscriptions,
   setSubscriptionReminder,
+  listSubscriptionsByUser,
 } = require("../controllers/subscriptionController");
 
 // User: create subscription from product
@@ -58,6 +59,14 @@ router.get(
   authenticate,
   requireAdmin,
   getActiveSubscriptions
+);
+
+// Admin: get all subscriptions of a specific user
+router.get(
+  "/user/:userId",
+  authenticate,
+  requireAdmin,
+  listSubscriptionsByUser
 );
 
 // Admin: get expiring subscriptions

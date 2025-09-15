@@ -14,6 +14,7 @@ const {
   getActiveSubscriptionsByUserService,
   getExpiringSubscriptionsService,
   setSubscriptionReminderService,
+  listSubscriptionsByUserService,
 } = require("../services/subscriptionService");
 
 // User creates subscription for a product
@@ -113,10 +114,21 @@ exports.listAllSubscriptions = async (req, res, next) => {
       status: req.query.status,
       billingCycle: req.query.billingCycle,
       subscriptionType: req.query.type,
+      userId: req.query.userId,
       page: req.query.page ? Number(req.query.page) : 1,
       limit: req.query.limit ? Number(req.query.limit) : 20,
     });
     return sendSuccess(res, data, "All subscriptions fetched");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Admin: list subscriptions for a specific user
+exports.listSubscriptionsByUser = async (req, res, next) => {
+  try {
+    const items = await listSubscriptionsByUserService(req.params.userId);
+    return sendSuccess(res, items, "User subscriptions fetched");
   } catch (error) {
     next(error);
   }

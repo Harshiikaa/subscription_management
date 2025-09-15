@@ -24,6 +24,7 @@ exports.listAllSubscriptionsRepo = async ({
   status,
   billingCycle,
   subscriptionType,
+  userId,
   page = 1,
   limit = 20,
 } = {}) => {
@@ -31,6 +32,7 @@ exports.listAllSubscriptionsRepo = async ({
   if (status) query.status = status;
   if (billingCycle) query.billingCycle = billingCycle;
   if (subscriptionType) query.subscriptionType = subscriptionType;
+  if (userId) query.userId = userId;
   const skip = (page - 1) * limit;
 
   const [items, total] = await Promise.all([
@@ -43,6 +45,13 @@ exports.listAllSubscriptionsRepo = async ({
   ]);
 
   return { items, page, limit, total, totalPages: Math.ceil(total / limit) };
+};
+
+// Admin: list all subscriptions for a given user
+exports.listSubscriptionsByUserRepo = async (userId) => {
+  return await Subscription.find({ userId })
+    .sort({ createdAt: -1 })
+    .populate("userId productId subscriptionPlanId");
 };
 
 exports.cancelSubscriptionRepo = async (id, reason = null) => {

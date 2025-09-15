@@ -19,6 +19,9 @@ const {
   getActiveSubscriptionsByUserRepo,
   getExpiringSubscriptionsRepo,
 } = require("../repositories/subscriptionRepo");
+const {
+  listSubscriptionsByUserRepo,
+} = require("../repositories/subscriptionRepo");
 
 // Helper function to schedule reminder for subscription with explicit reminderDaysBefore
 const scheduleSubscriptionReminder = async (
@@ -148,6 +151,10 @@ exports.listMySubscriptionsService = async (
 
 exports.listAllSubscriptionsService = async (query) => {
   return await listAllSubscriptionsRepo(query);
+};
+
+exports.listSubscriptionsByUserService = async (userId) => {
+  return await listSubscriptionsByUserRepo(userId);
 };
 
 exports.getSubscriptionsByProductService = async (productId) => {

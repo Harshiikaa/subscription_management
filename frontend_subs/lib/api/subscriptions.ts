@@ -289,6 +289,11 @@ export const subscriptionApi = {
     return apiRequest<Subscription[]>(endpoint);
   },
 
+  // Admin: Get subscriptions for a specific user
+  getByUser: async (userId: string): Promise<ApiResponse<Subscription[]>> => {
+    return apiRequest<Subscription[]>(`/subscriptions/user/${userId}`);
+  },
+
   // Get expiring subscriptions
   getExpiring: async (days?: number): Promise<ApiResponse<Subscription[]>> => {
     const endpoint = days

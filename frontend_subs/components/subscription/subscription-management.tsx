@@ -39,11 +39,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar, DollarSign, Edit, Eye, Plus, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import subscriptionApi, { Subscription } from "@/lib/api/subscriptions";
+import productsApi from "@/lib/api/products";
 
 export function SubscriptionManagement() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userFilter, setUserFilter] = useState<string>("");
+  const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingSubscription, setEditingSubscription] =
@@ -62,12 +65,17 @@ export function SubscriptionManagement() {
   });
 
   // Fetch subscriptions from API
-  const fetchSubscriptions = async () => {
+  const fetchSubscriptions = async (statusFilter?: string, userIdFilter?: string) => {
     try {
       setLoading(true);
       setError(null);
-      const result = await subscriptionApi.listAll();
-      setSubscriptions(result.data.items);
+      if (userIdFilter && userIdFilter.trim().length > 0) {
+        const result = await subscriptionApi.getByUser(userIdFilter.trim());
+        setSubscriptions(result.data);
+      } else {
+        const result = await subscriptionApi.listAll({ status: statusFilter });
+        setSubscriptions(result.data.items);
+      }
     } catch (error) {
       console.error('Error fetching subscriptions:', error);
       setError('Failed to load subscriptions');
@@ -138,6 +146,16 @@ export function SubscriptionManagement() {
 
   useEffect(() => {
     fetchSubscriptions();
+    // fetch products for select dropdowns
+    (async () => {
+      try {
+        const data = await productsApi.list({ limit: 100 });
+        const items = data.items.map((p: any) => ({ id: p._id, name: p.name }));
+        setProducts(items);
+      } catch (e) {
+        // ignore silently for now; dropdown will be empty
+      }
+    })();
   }, []);
 
   const handleCreateSubscription = async () => {
@@ -344,6 +362,26 @@ export function SubscriptionManagement() {
             Create and manage subscription plans for your products
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="Filter by User ID"
+            value={userFilter}
+            onChange={(e) => setUserFilter(e.target.value)}
+            className="w-64"
+          />
+          <Button variant="outline" onClick={() => fetchSubscriptions(undefined, userFilter)}>
+            Apply
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setUserFilter("");
+              fetchSubscriptions();
+            }}
+          >
+            Clear
+          </Button>
+        </div>
 
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
@@ -523,16 +561,32 @@ export function SubscriptionManagement() {
                   <TableCell>
                     <div>
                       <div className="font-medium">
-                        {subscription.subscriptionType === "product" 
-                          ? subscription.product?.name || "Unknown Product"
-                          : subscription.subscriptionPlan?.name || "Unknown Plan"
-                        }
+                        {subscription.subscriptionType === "product"
+                          ? (
+                              typeof subscription.productId === "object"
+                                ? (subscription.productId as any).name
+                                : subscription.product?.name || "Unknown Product"
+                            )
+                          : (
+                              subscription.subscriptionPlan?.name ||
+                              (typeof subscription.subscriptionPlanId === "object"
+                                ? (subscription.subscriptionPlanId as any).name
+                                : "Unknown Plan")
+                            )}
                       </div>
                       <div className="text-sm text-muted-foreground line-clamp-1">
-                        {subscription.subscriptionType === "product" 
-                          ? subscription.product?.description || ""
-                          : subscription.subscriptionPlan?.description || ""
-                        }
+                        {subscription.subscriptionType === "product"
+                          ? (
+                              typeof subscription.productId === "object"
+                                ? (subscription.productId as any).description || ""
+                                : subscription.product?.description || ""
+                            )
+                          : (
+                              subscription.subscriptionPlan?.description ||
+                              (typeof subscription.subscriptionPlanId === "object"
+                                ? (subscription.subscriptionPlanId as any).description || ""
+                                : "")
+                            )}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
                         Started: {new Date(subscription.startDate).toLocaleDateString()}
@@ -541,8 +595,18 @@ export function SubscriptionManagement() {
                   </TableCell>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{subscription.user?.name || "Unknown User"}</div>
-                      <div className="text-sm text-muted-foreground">{subscription.user?.email || subscription.userId}</div>
+                      <div className="font-medium">
+                        {(
+                          typeof subscription.userId === "object"
+                            ? (subscription.userId as any).name
+                            : subscription.user?.name
+                        ) || "Unknown User"}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {typeof subscription.userId === "object"
+                          ? (subscription.userId as any).email
+                          : subscription.user?.email || String(subscription.userId)}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
