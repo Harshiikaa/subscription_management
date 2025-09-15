@@ -1,11 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, Loader2, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
+import { CreditCard, ExternalLink, Loader2 } from "lucide-react";
+import { useState } from "react";
 
 interface KhaltiPaymentButtonProps {
   productId?: string;
@@ -87,7 +93,7 @@ export default function KhaltiPaymentButton({
       if (data.success && data.data.payment_url) {
         // Redirect to Khalti payment page
         window.location.href = data.data.payment_url;
-        
+
         // Call success callback if provided
         onSuccess?.(data.data);
       } else {
@@ -95,14 +101,15 @@ export default function KhaltiPaymentButton({
       }
     } catch (error) {
       console.error("Khalti payment error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Payment failed";
-      
+      const errorMessage =
+        error instanceof Error ? error.message : "Payment failed";
+
       toast({
         title: "Payment Error",
         description: errorMessage,
         variant: "destructive",
       });
-      
+
       onError?.(errorMessage);
     } finally {
       setLoading(false);
@@ -116,11 +123,9 @@ export default function KhaltiPaymentButton({
           <CreditCard className="w-5 h-5" />
           Pay with Khalti
         </CardTitle>
-        <CardDescription>
-          Secure payment powered by Khalti
-        </CardDescription>
+        <CardDescription>Secure payment powered by Khalti</CardDescription>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {/* Payment Summary */}
         <div className="bg-gray-50 rounded-lg p-4 space-y-2">
@@ -130,28 +135,34 @@ export default function KhaltiPaymentButton({
               {currency} {amount.toFixed(2)}
             </span>
           </div>
-          
+
           {amountBreakdown.subtotal && amountBreakdown.subtotal !== amount && (
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Subtotal:</span>
-              <span>{currency} {amountBreakdown.subtotal.toFixed(2)}</span>
+              <span>
+                {currency} {amountBreakdown.subtotal.toFixed(2)}
+              </span>
             </div>
           )}
-          
+
           {amountBreakdown.tax && amountBreakdown.tax > 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Tax:</span>
-              <span>{currency} {amountBreakdown.tax.toFixed(2)}</span>
+              <span>
+                {currency} {amountBreakdown.tax.toFixed(2)}
+              </span>
             </div>
           )}
-          
+
           {amountBreakdown.shipping && amountBreakdown.shipping > 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Shipping:</span>
-              <span>{currency} {amountBreakdown.shipping.toFixed(2)}</span>
+              <span>
+                {currency} {amountBreakdown.shipping.toFixed(2)}
+              </span>
             </div>
           )}
-          
+
           {amountBreakdown.discount && amountBreakdown.discount > 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Discount:</span>
@@ -193,9 +204,7 @@ export default function KhaltiPaymentButton({
 
         {/* Security Notice */}
         <div className="text-xs text-gray-500 text-center">
-          <p>
-            Your payment is secured by Khalti's encryption technology.
-          </p>
+          <p>Your payment is secured by Khalti's encryption technology.</p>
           <p className="mt-1">
             You will be redirected to Khalti's secure payment page.
           </p>
