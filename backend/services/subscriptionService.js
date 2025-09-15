@@ -2,6 +2,8 @@ const AppError = require("../utils/errors");
 const Subscription = require("../models/subscription");
 const Product = require("../models/product");
 const SubscriptionPlan = require("../models/subscriptionPlan");
+const ReminderPreferences = require("../models/reminderPreferences");
+const agendaConfig = require("../configs/agenda");
 const {
   createSubscriptionRepo,
   getSubscriptionByIdRepo,
@@ -18,6 +20,48 @@ const {
   getExpiringSubscriptionsRepo,
 } = require("../repositories/subscriptionRepo");
 
+// Helper function to schedule reminder for subscription
+const scheduleSubscriptionReminder = async (subscription) => {
+  try {
+    // Get user's reminder preferences
+    const preferences = await ReminderPreferences.getUserPreferences(
+      subscription.userId
+    );
+
+    if (!preferences || !preferences.subscriptionExpiryReminder.enabled) {
+      console.log(`Reminder not enabled for user ${subscription.userId}`);
+      return;
+    }
+
+    // Calculate reminder date
+    const reminderDate = new Date(subscription.endDate);
+    reminderDate.setDate(
+      reminderDate.getDate() -
+        preferences.subscriptionExpiryReminder.daysBeforeExpiry
+    );
+
+    // Only schedule if reminder date is in the future
+    if (reminderDate > new Date()) {
+      await agendaConfig.scheduleSubscriptionReminder(
+        subscription._id,
+        reminderDate
+      );
+      console.log(
+        `✅ Scheduled reminder for subscription ${subscription._id} at ${reminderDate}`
+      );
+    } else {
+      console.log(
+        `Reminder date ${reminderDate} is in the past, skipping for subscription ${subscription._id}`
+      );
+    }
+  } catch (error) {
+    console.error(
+      `Error scheduling reminder for subscription ${subscription._id}:`,
+      error
+    );
+  }
+};
+
 exports.createFromProductService = async ({
   productId,
   userId,
@@ -25,12 +69,17 @@ exports.createFromProductService = async ({
   paymentMethod,
 }) => {
   try {
-    return await createFromProductRepo(
+    const subscription = await createFromProductRepo(
       productId,
       userId,
       billingCycle,
       paymentMethod
     );
+
+    // Schedule reminder for the new subscription
+    await scheduleSubscriptionReminder(subscription);
+
+    return subscription;
   } catch (error) {
     if (error.message.includes("not found")) {
       throw AppError.notFound("Product not found");
@@ -52,12 +101,17 @@ exports.createFromPlanService = async ({
   paymentMethod,
 }) => {
   try {
-    return await createFromPlanRepo(
+    const subscription = await createFromPlanRepo(
       subscriptionPlanId,
       userId,
       billingCycle,
       paymentMethod
     );
+
+    // Schedule reminder for the new subscription
+    await scheduleSubscriptionReminder(subscription);
+
+    return subscription;
   } catch (error) {
     if (error.message.includes("not found")) {
       throw AppError.notFound("Subscription plan not found");

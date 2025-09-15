@@ -47,9 +47,24 @@ exports.googleLoginController = async (req, res) => {
   return sendSuccess(res, result, "Google login successful", 200);
 };
 
-
 exports.facebookLoginController = async (req, res) => {
   const { token } = req.body;
   const result = await facebookLoginService(token);
   return sendSuccess(res, result, "Facebook login successful", 200);
+};
+
+exports.logoutController = async (req, res) => {
+  // In a more sophisticated system, you might want to:
+  // 1. Add the token to a blacklist
+  // 2. Log the logout event
+  // 3. Clear any server-side sessions
+
+  // For now, we'll just return success
+  // The frontend will handle clearing localStorage
+  return sendSuccess(
+    res,
+    { message: "Logged out successfully" },
+    "Logout successful",
+    200
+  );
 };

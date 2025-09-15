@@ -11,7 +11,6 @@ const {
 const jwt = require("jsonwebtoken");
 const { generateAccessToken, generateRefreshToken } = require("../utils/jwt");
 
-
 exports.signUpService = async ({ name, email, password }) => {
   // check if email already exists
   const existingUser = await findByEmailRepo(email);
@@ -54,6 +53,7 @@ exports.loginService = async ({ user, password }) => {
       id: user._id,
       name: user.name,
       email: user.email,
+      picture: user.picture,
     },
     tokens: {
       accessToken,
@@ -110,7 +110,6 @@ exports.googleLoginService = async (firebaseToken) => {
     },
   };
 };
-
 
 exports.facebookLoginService = async (firebaseToken) => {
   const decoded = await admin.auth().verifyIdToken(firebaseToken);

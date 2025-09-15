@@ -12,6 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "agenda": "^5.0.0",
     "axios": "^1.6.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
@@ -20,7 +21,8 @@
     "express": "^5.1.0",
     "firebase-admin": "^13.5.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.18.0"
+    "mongoose": "^8.18.0",
+    "nodemailer": "^7.0.6"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
