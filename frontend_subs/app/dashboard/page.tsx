@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MainNav } from "@/components/navigation/main-nav"
+import { LogoutButton } from "@/components/navigation/logout-button"
 import { getUserSubscriptions, getUserTransactions, getProductById } from "@/lib/mock-data"
 import { CreditCard, Package, TrendingUp, Calendar, ArrowRight } from "lucide-react"
 import Link from "next/link"
@@ -39,9 +40,12 @@ export default function DashboardPage() {
       <MainNav />
 
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-balance">Welcome back, {user.name}!</h1>
-          <p className="text-muted-foreground text-pretty">Here's an overview of your account and subscriptions.</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-balance">Welcome back, {user.name}!</h1>
+            <p className="text-muted-foreground text-pretty">Here's an overview of your account and subscriptions.</p>
+          </div>
+          <LogoutButton />
         </div>
 
         {/* Stats Cards */}

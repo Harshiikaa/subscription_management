@@ -4,7 +4,8 @@ import { SubscriptionManagement } from "@/components/subscription/subscription-m
 import { SubscriptionPlanManagement } from "@/components/subscription/subscription-plan-management";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, CreditCard, Package, Users, Settings } from "lucide-react";
+import { BarChart3, CreditCard, Package, Users, Settings, LogOut } from "lucide-react";
+import { LogoutButton } from "@/components/navigation/logout-button";
 import { useState, useEffect } from "react";
 import subscriptionApi from "@/lib/api/subscriptions";
 import subscriptionPlanApi from "@/lib/api/subscription-plans";
@@ -85,6 +86,7 @@ const page = () => {
                 </p>
               </div>
             </div>
+            <LogoutButton />
           </div>
         </div>
       </header>
