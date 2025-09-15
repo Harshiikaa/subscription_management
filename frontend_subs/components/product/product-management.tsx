@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -38,47 +38,52 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Edit, Trash2, Eye } from "lucide-react";
+import productsApi from "@/lib/api/products";
 
 interface Product {
   id: string;
   name: string;
-  description: string;
-  price: number;
-  category: string;
-  status: "active" | "inactive" | "draft";
-  createdAt: string;
+  description?: string;
+  price?: number;
+  pricing?: { monthly?: number; yearly?: number; currency?: string };
+  currency?: string;
+  category?: string;
+  status?: "active" | "inactive" | "draft" | string;
+  createdAt?: string;
 }
 
 export function ProductManagement() {
-  const [products, setProducts] = useState<Product[]>([
-    {
-      id: "1",
-      name: "Premium Plan",
-      description: "Full access to all features with priority support",
-      price: 29.99,
-      category: "Subscription",
-      status: "active",
-      createdAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      name: "Basic Plan",
-      description: "Essential features for getting started",
-      price: 9.99,
-      category: "Subscription",
-      status: "active",
-      createdAt: "2024-01-10",
-    },
-    {
-      id: "3",
-      name: "Enterprise Plan",
-      description: "Advanced features for large organizations",
-      price: 99.99,
-      category: "Subscription",
-      status: "draft",
-      createdAt: "2024-01-20",
-    },
-  ]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await productsApi.list({ limit: 100 });
+      const items: Product[] = data.items.map((p: any) => ({
+        id: p._id,
+        name: p.name,
+        description: p.description,
+        price: typeof p.price === "object" ? (p.price?.monthly ?? 0) : (p.price ?? 0),
+        pricing: typeof p.price === "object" ? { monthly: p.price?.monthly, yearly: p.price?.yearly, currency: "NPR" } : undefined,
+        currency: "NPR",
+        category: p.category,
+        status: p.isActive ? "active" : "inactive",
+        createdAt: p.createdAt,
+      }));
+      setProducts(items);
+    } catch (e: any) {
+      setError(e?.message || "Failed to load products");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -219,7 +224,7 @@ export function ProductManagement() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="price">Price ($)</Label>
+                  <Label htmlFor="price">Price (Rupees)</Label>
                   <Input
                     id="price"
                     type="number"
@@ -290,6 +295,8 @@ export function ProductManagement() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {loading && <div className="text-sm text-muted-foreground">Loading products...</div>}
+          {error && <div className="text-sm text-destructive mb-2">{error}</div>}
           <Table>
             <TableHeader>
               <TableRow>
@@ -313,9 +320,9 @@ export function ProductManagement() {
                     </div>
                   </TableCell>
                   <TableCell>{product.category}</TableCell>
-                  <TableCell>${product.price}</TableCell>
-                  <TableCell>{getStatusBadge(product.status)}</TableCell>
-                  <TableCell>{product.createdAt}</TableCell>
+                  <TableCell>{product.currency || product.pricing?.currency || "NPR"} {product.price}</TableCell>
+                  <TableCell>{getStatusBadge(product.status as string)}</TableCell>
+                  <TableCell>{product.createdAt ? new Date(product.createdAt).toLocaleDateString() : "-"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Button variant="ghost" size="sm">

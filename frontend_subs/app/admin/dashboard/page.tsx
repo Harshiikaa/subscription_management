@@ -8,6 +8,7 @@ import { BarChart3, CreditCard, Package, Users, Settings } from "lucide-react";
 import { useState, useEffect } from "react";
 import subscriptionApi from "@/lib/api/subscriptions";
 import subscriptionPlanApi from "@/lib/api/subscription-plans";
+import productsApi from "@/lib/api/products";
 const page = () => {
   const [stats, setStats] = useState({
     totalProducts: 0,
@@ -26,9 +27,9 @@ const page = () => {
         const subscriptionsResult = await subscriptionApi.listAll();
         const subscriptions = subscriptionsResult.data.items;
         
-        // Fetch subscription plans data
-        const plansResult = await subscriptionPlanApi.list();
-        const plans = plansResult.data.items;
+        // Fetch products from backend
+        const productsResult = await productsApi.list({ limit: 100 });
+        const products = productsResult.items;
         
         // Calculate stats
         const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active').length;
@@ -43,7 +44,7 @@ const page = () => {
         const uniqueUsers = new Set(subscriptions.map(sub => sub.userId)).size;
         
         setStats({
-          totalProducts: plans.length, // Using plans as products for now
+          totalProducts: products.length,
           activeSubscriptions,
           monthlyRevenue: Math.round(totalMonthlyRevenue * 100) / 100,
           totalSubscribers: uniqueUsers,
