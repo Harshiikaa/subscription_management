@@ -128,13 +128,18 @@ export function SubscriptionPlanManagement() {
 
   const handleCreatePlan = async () => {
     try {
+      const monthly = Math.max(0, parseFloat(formData.monthlyPrice || "0"));
+      const yearly = Math.max(0, parseFloat(formData.yearlyPrice || "0"));
+      const rawDays = parseInt(formData.trialDays || "0");
+      const safeDays = Math.max(0, Math.min(365, isNaN(rawDays) ? 0 : rawDays));
+      const trialEnabled = formData.trialEnabled && safeDays > 0;
       const planData: CreateSubscriptionPlanData = {
         name: formData.name,
         description: formData.description,
         planType: formData.planType,
         pricing: {
-          monthly: parseFloat(formData.monthlyPrice),
-          yearly: parseFloat(formData.yearlyPrice),
+          monthly,
+          yearly,
           currency: formData.currency,
         },
         features: formData.features
@@ -146,8 +151,8 @@ export function SubscriptionPlanManagement() {
           .filter((f) => f.name),
         billingCycles: formData.billingCycles,
         trialPeriod: {
-          enabled: formData.trialEnabled,
-          days: parseInt(formData.trialDays) || 0,
+          enabled: trialEnabled,
+          days: trialEnabled ? safeDays : 0,
         },
         limits: {
           maxUsers: formData.maxUsers ? parseInt(formData.maxUsers) : undefined,
@@ -197,13 +202,18 @@ export function SubscriptionPlanManagement() {
     if (!editingPlan) return;
 
     try {
+      const monthly = Math.max(0, parseFloat(formData.monthlyPrice || "0"));
+      const yearly = Math.max(0, parseFloat(formData.yearlyPrice || "0"));
+      const rawDays = parseInt(formData.trialDays || "0");
+      const safeDays = Math.max(0, Math.min(365, isNaN(rawDays) ? 0 : rawDays));
+      const trialEnabled = formData.trialEnabled && safeDays > 0;
       const planData: Partial<CreateSubscriptionPlanData> = {
         name: formData.name,
         description: formData.description,
         planType: formData.planType,
         pricing: {
-          monthly: parseFloat(formData.monthlyPrice),
-          yearly: parseFloat(formData.yearlyPrice),
+          monthly,
+          yearly,
           currency: formData.currency,
         },
         features: formData.features
@@ -215,8 +225,8 @@ export function SubscriptionPlanManagement() {
           .filter((f) => f.name),
         billingCycles: formData.billingCycles,
         trialPeriod: {
-          enabled: formData.trialEnabled,
-          days: parseInt(formData.trialDays) || 0,
+          enabled: trialEnabled,
+          days: trialEnabled ? safeDays : 0,
         },
         limits: {
           maxUsers: formData.maxUsers ? parseInt(formData.maxUsers) : undefined,
@@ -783,7 +793,224 @@ export function SubscriptionPlanManagement() {
                                 </Select>
                               </div>
                             </div>
-                            {/* Add other form fields here - same as create form */}
+                            <div className="grid gap-2">
+                              <Label htmlFor="edit-description">Description</Label>
+                              <Textarea
+                                id="edit-description"
+                                value={formData.description}
+                                onChange={(e) =>
+                                  setFormData({ ...formData, description: e.target.value })
+                                }
+                                placeholder="Describe this subscription plan"
+                                rows={2}
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4">
+                              <div className="grid gap-2">
+                                <Label htmlFor="edit-monthlyPrice">Monthly Price (Rupees)</Label>
+                                <Input
+                                  id="edit-monthlyPrice"
+                                  type="number"
+                                  step="0.01"
+                                  value={formData.monthlyPrice}
+                                  onChange={(e) =>
+                                    setFormData({ ...formData, monthlyPrice: e.target.value })
+                                  }
+                                  placeholder="0.00"
+                                />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label htmlFor="edit-yearlyPrice">Yearly Price (Rupees)</Label>
+                                <Input
+                                  id="edit-yearlyPrice"
+                                  type="number"
+                                  step="0.01"
+                                  value={formData.yearlyPrice}
+                                  onChange={(e) =>
+                                    setFormData({ ...formData, yearlyPrice: e.target.value })
+                                  }
+                                  placeholder="0.00"
+                                />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label htmlFor="edit-currency">Currency</Label>
+                                <Select
+                                  value={formData.currency}
+                                  onValueChange={(value) =>
+                                    setFormData({ ...formData, currency: value })
+                                  }
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="NPR">NPR</SelectItem>
+                                    <SelectItem value="USD">USD</SelectItem>
+                                    <SelectItem value="EUR">EUR</SelectItem>
+                                    <SelectItem value="GBP">GBP</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+
+                            <div className="grid gap-2">
+                              <Label htmlFor="edit-features">Features (comma-separated)</Label>
+                              <Textarea
+                                id="edit-features"
+                                value={formData.features}
+                                onChange={(e) =>
+                                  setFormData({ ...formData, features: e.target.value })
+                                }
+                                placeholder="Feature 1, Feature 2, Feature 3"
+                                rows={2}
+                              />
+                            </div>
+
+                            <div className="grid gap-2">
+                              <Label>Billing Cycles</Label>
+                              <div className="flex gap-2">
+                                {['monthly','yearly','quarterly','weekly'].map((cycle) => (
+                                  <label key={cycle} className="flex items-center space-x-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={formData.billingCycles.includes(cycle)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setFormData({
+                                            ...formData,
+                                            billingCycles: [...formData.billingCycles, cycle],
+                                          })
+                                        } else {
+                                          setFormData({
+                                            ...formData,
+                                            billingCycles: formData.billingCycles.filter((c) => c !== cycle),
+                                          })
+                                        }
+                                      }}
+                                    />
+                                    <span className="text-sm capitalize">{cycle}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="grid gap-2">
+                                <Label htmlFor="edit-trialDays">Trial Days</Label>
+                                <Input
+                                  id="edit-trialDays"
+                                  type="number"
+                                  value={formData.trialDays}
+                                  onChange={(e) =>
+                                    setFormData({ ...formData, trialDays: e.target.value })
+                                  }
+                                  placeholder="0"
+                                />
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  id="edit-trialEnabled"
+                                  checked={formData.trialEnabled}
+                                  onChange={(e) =>
+                                    setFormData({ ...formData, trialEnabled: e.target.checked })
+                                  }
+                                />
+                                <Label htmlFor="edit-trialEnabled">Enable Trial</Label>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="grid gap-2">
+                                <Label htmlFor="edit-maxUsers">Max Users</Label>
+                                <Input
+                                  id="edit-maxUsers"
+                                  type="number"
+                                  value={formData.maxUsers}
+                                  onChange={(e) =>
+                                    setFormData({ ...formData, maxUsers: e.target.value })
+                                  }
+                                  placeholder="Unlimited"
+                                />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label htmlFor="edit-maxStorage">Max Storage</Label>
+                                <Input
+                                  id="edit-maxStorage"
+                                  value={formData.maxStorage}
+                                  onChange={(e) =>
+                                    setFormData({ ...formData, maxStorage: e.target.value })
+                                  }
+                                  placeholder="e.g., 10GB, unlimited"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="grid gap-2">
+                                <Label htmlFor="edit-maxApiCalls">Max API Calls</Label>
+                                <Input
+                                  id="edit-maxApiCalls"
+                                  type="number"
+                                  value={formData.maxApiCalls}
+                                  onChange={(e) =>
+                                    setFormData({ ...formData, maxApiCalls: e.target.value })
+                                  }
+                                  placeholder="Unlimited"
+                                />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label htmlFor="edit-maxProjects">Max Projects</Label>
+                                <Input
+                                  id="edit-maxProjects"
+                                  type="number"
+                                  value={formData.maxProjects}
+                                  onChange={(e) =>
+                                    setFormData({ ...formData, maxProjects: e.target.value })
+                                  }
+                                  placeholder="Unlimited"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="grid gap-2">
+                                <Label htmlFor="edit-sortOrder">Sort Order</Label>
+                                <Input
+                                  id="edit-sortOrder"
+                                  type="number"
+                                  value={formData.sortOrder}
+                                  onChange={(e) =>
+                                    setFormData({ ...formData, sortOrder: e.target.value })
+                                  }
+                                  placeholder="0"
+                                />
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  id="edit-isPopular"
+                                  checked={formData.isPopular}
+                                  onChange={(e) =>
+                                    setFormData({ ...formData, isPopular: e.target.checked })
+                                  }
+                                />
+                                <Label htmlFor="edit-isPopular">Popular Plan</Label>
+                              </div>
+                            </div>
+
+                            <div className="grid gap-2">
+                              <Label htmlFor="edit-tags">Tags (comma-separated)</Label>
+                              <Input
+                                id="edit-tags"
+                                value={formData.tags}
+                                onChange={(e) =>
+                                  setFormData({ ...formData, tags: e.target.value })
+                                }
+                                placeholder="business, professional, team"
+                              />
+                            </div>
                           </div>
                           <DialogFooter>
                             <Button
