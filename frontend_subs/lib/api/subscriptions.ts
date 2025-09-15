@@ -3,7 +3,42 @@ const API_BASE_URL = "http://localhost:5000/api";
 export interface Subscription {
   _id: string;
   userId: string;
-  productId?: string;
+  productId?:
+    | string
+    | {
+        _id: string;
+        name: string;
+        description: string;
+        price: {
+          monthly: number;
+          yearly: number;
+        };
+        formattedPrice: {
+          monthly: string;
+          yearly: string;
+        };
+        features: string[];
+        image: string;
+        category: string;
+        isActive: boolean;
+        isPopular: boolean;
+        rating: number;
+        reviews: number;
+        tags: string[];
+        trialDays: number;
+        yearlySavings: number;
+        url: string;
+        availability: string;
+        maxUsers?: number;
+        storage?: string;
+        support?: string;
+        createdAt: string;
+        updatedAt: string;
+        createdBy?: string;
+        updatedBy?: string;
+        __v: number;
+        id: string;
+      };
   subscriptionPlanId?: string;
   subscriptionType: "product" | "plan";
   status: "active" | "inactive" | "cancelled" | "expired" | "trial";
@@ -15,9 +50,21 @@ export interface Subscription {
   nextBilling?: string;
   trialEndsAt?: string;
   cancelledAt?: string;
+  cancelReason?: string;
+  failureReason?: string;
+  paymentMethod: "esewa" | "khalti" | "stripe" | "card" | "bank_transfer";
+  lastPaymentDate?: string;
+  nextPaymentDate?: string;
+  autoRenew: boolean;
   createdAt: string;
   updatedAt: string;
-  // Populated fields
+  __v: number;
+  // Computed fields
+  daysRemaining?: number;
+  isActive?: boolean;
+  isInTrial?: boolean;
+  id: string;
+  // Populated fields (for backward compatibility)
   product?: {
     _id: string;
     name: string;

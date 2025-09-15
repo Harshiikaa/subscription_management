@@ -16,7 +16,8 @@ import { ReminderPreferences } from "@/components/reminder/reminder-preferences"
 import { ManualReminderManager } from "@/components/reminder/manual-reminder-manager"
 import { getUserTransactions } from "@/lib/mock-data"
 import { paymentApi, Payment } from "@/lib/api/payments"
-import { CreditCard, Receipt, Settings, Download, Check, ArrowLeft, Filter } from "lucide-react"
+import { subscriptionApi, Subscription } from "@/lib/api/subscriptions"
+import { CreditCard, Receipt, Settings, Download, Check, ArrowLeft, Filter, Calendar } from "lucide-react"
 import Link from "next/link"
 
 export default function BillingPage() {
@@ -53,6 +54,12 @@ export default function BillingPage() {
   const [invoicesError, setInvoicesError] = useState<string | null>(null)
   const [invoiceFilter, setInvoiceFilter] = useState<string>("all") // all, completed, failed, pending, etc.
 
+  // Subscriptions state
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(false)
+  const [subscriptionsError, setSubscriptionsError] = useState<string | null>(null)
+  const [subscriptionFilter, setSubscriptionFilter] = useState<string>("all") // all, active, inactive, cancelled, expired, trial
+
   const productId = searchParams.get("product")
   const planId = searchParams.get("plan")
   const billingCycle = (searchParams.get("billing") as "monthly" | "yearly") || "monthly"
@@ -83,9 +90,31 @@ export default function BillingPage() {
     }
   }
 
+  // Fetch subscriptions
+  const fetchSubscriptions = async (statusFilter?: string) => {
+    if (!isAuthenticated) return
+    
+    setSubscriptionsLoading(true)
+    setSubscriptionsError(null)
+    try {
+      const response = await subscriptionApi.listMy({
+        status: statusFilter === "all" ? undefined : statusFilter,
+        limit: 50
+      })
+      // The API returns data as a direct array, not wrapped in items
+      setSubscriptions(response.data)
+    } catch (error) {
+      console.error("Failed to fetch subscriptions:", error)
+      setSubscriptionsError("Failed to load subscriptions")
+    } finally {
+      setSubscriptionsLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (isAuthenticated) {
       fetchInvoices()
+      fetchSubscriptions()
     }
   }, [isAuthenticated])
 
@@ -371,8 +400,9 @@ export default function BillingPage() {
         )}
 
         <Tabs defaultValue="payment-methods" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="payment-methods">Payment Methods</TabsTrigger>
+            <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
             <TabsTrigger value="invoices">Invoices</TabsTrigger>
             <TabsTrigger value="billing-info">Billing Info</TabsTrigger>
             <TabsTrigger value="reminders">Auto Reminders</TabsTrigger>
@@ -467,6 +497,164 @@ export default function BillingPage() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          <TabsContent value="subscriptions" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">My Subscriptions</h2>
+                <p className="text-muted-foreground">View and manage your active subscriptions</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <Select value={subscriptionFilter} onValueChange={(value) => {
+                  setSubscriptionFilter(value)
+                  fetchSubscriptions(value)
+                }}>
+                  <SelectTrigger className="w-[180px]">
+                    <Filter className="mr-2 h-4 w-4" />
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Subscriptions</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="expired">Expired</SelectItem>
+                    <SelectItem value="trial">Trial</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="outline">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  View Calendar
+                </Button>
+              </div>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Subscription History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {subscriptionsLoading ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Loading subscriptions...</p>
+                  </div>
+                ) : subscriptionsError ? (
+                  <div className="text-center py-8">
+                    <p className="text-destructive">{subscriptionsError}</p>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => fetchSubscriptions()}
+                      className="mt-2"
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                ) : subscriptions.length > 0 ? (
+                  <div className="space-y-4">
+                    {subscriptions.map((subscription) => (
+                      <div key={subscription._id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-medium">
+                              {subscription.subscriptionType === "product" 
+                                ? (typeof subscription.productId === 'object' ? subscription.productId.name : "Product Subscription")
+                                : subscription.subscriptionPlan?.name || "Plan Subscription"
+                              }
+                            </h3>
+                            <Badge
+                              variant={
+                                subscription.status === "active"
+                                  ? "default"
+                                  : subscription.status === "trial"
+                                    ? "secondary"
+                                    : subscription.status === "cancelled"
+                                      ? "destructive"
+                                      : subscription.status === "expired"
+                                        ? "outline"
+                                        : "secondary"
+                              }
+                            >
+                              {subscription.status}
+                            </Badge>
+                            {subscription.daysRemaining && subscription.daysRemaining > 0 && (
+                              <Badge variant="outline">
+                                {subscription.daysRemaining} days left
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-1">
+                            {subscription.subscriptionType === "product" 
+                              ? (typeof subscription.productId === 'object' ? subscription.productId.description : "Product subscription")
+                              : subscription.subscriptionPlan?.description || "Plan subscription"
+                            }
+                          </p>
+                          {subscription.subscriptionType === "product" && typeof subscription.productId === 'object' && subscription.productId.features && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {subscription.productId.features.slice(0, 3).map((feature, index) => (
+                                <Badge key={index} variant="outline" className="text-xs">
+                                  {feature}
+                                </Badge>
+                              ))}
+                              {subscription.productId.features.length > 3 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{subscription.productId.features.length - 3} more
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span>Billing: {subscription.billingCycle}</span>
+                            <span>Started: {new Date(subscription.startDate).toLocaleDateString()}</span>
+                            {subscription.endDate && (
+                              <span>Ends: {new Date(subscription.endDate).toLocaleDateString()}</span>
+                            )}
+                            {subscription.nextBilling && (
+                              <span>Next billing: {new Date(subscription.nextBilling).toLocaleDateString()}</span>
+                            )}
+                            {subscription.paymentMethod && (
+                              <span>Payment: {subscription.paymentMethod}</span>
+                            )}
+                            {subscription.autoRenew && (
+                              <Badge variant="secondary" className="text-xs">Auto-renew</Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="font-semibold">{subscription.amount.toFixed(2)} {subscription.currency}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {subscription.billingCycle === "monthly" ? "per month" : 
+                               subscription.billingCycle === "yearly" ? "per year" : 
+                               subscription.billingCycle === "quarterly" ? "per quarter" : 
+                               subscription.billingCycle === "weekly" ? "per week" : "per billing cycle"}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            {subscription.status === "active" && (
+                              <Button variant="outline" size="sm">
+                                Manage
+                              </Button>
+                            )}
+                            {subscription.status === "active" && (
+                              <Button variant="destructive" size="sm">
+                                Cancel
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-8">No subscriptions found.</p>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="invoices" className="space-y-6">
