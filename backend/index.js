@@ -12,8 +12,8 @@ const errorHandler = require("./middlewares/errorHandler");
 const { initAgenda } = require("./utils/agenda");
 const defineReminderJob = require("./jobs/reminderJob");
 
-const { seedMockProductsService } = require("./services/productService");
-const { seedMockPlansService } = require("./services/subscriptionPlanService");
+// const { seedMockProductsService } = require("./services/productService");
+// const { seedMockPlansService } = require("./services/subscriptionPlanService");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -77,21 +77,19 @@ app.use((req, res) => {
     console.error("⚠️ Failed to initialize Agenda:", e.message);
   }
 
-  // Auto-seed products (idempotent)
-  try {
-    await seedMockProductsService();
-    console.log("✅ Mock products seeded");
-  } catch (e) {
-    console.error("⚠️ Failed to seed products:", e.message);
-  }
-
-  // Auto-seed subscription plans (idempotent)
-  try {
-    await seedMockPlansService();
-    console.log("✅ Mock subscription plans seeded");
-  } catch (e) {
-    console.error("⚠️ Failed to seed subscription plans:", e.message);
-  }
+  // Seeding disabled in production. Uncomment for local demo data.
+  // try {
+  //   await seedMockProductsService();
+  //   console.log("✅ Mock products seeded");
+  // } catch (e) {
+  //   console.error("⚠️ Failed to seed products:", e.message);
+  // }
+  // try {
+  //   await seedMockPlansService();
+  //   console.log("✅ Mock subscription plans seeded");
+  // } catch (e) {
+  //   console.error("⚠️ Failed to seed subscription plans:", e.message);
+  // }
 
   app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);

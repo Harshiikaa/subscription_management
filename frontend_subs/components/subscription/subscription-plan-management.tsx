@@ -539,58 +539,7 @@ export function SubscriptionPlanManagement() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="maxUsers">Max Users</Label>
-                  <Input
-                    id="maxUsers"
-                    type="number"
-                    value={formData.maxUsers}
-                    onChange={(e) =>
-                      setFormData({ ...formData, maxUsers: e.target.value })
-                    }
-                    placeholder="Unlimited"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="maxStorage">Max Storage</Label>
-                  <Input
-                    id="maxStorage"
-                    value={formData.maxStorage}
-                    onChange={(e) =>
-                      setFormData({ ...formData, maxStorage: e.target.value })
-                    }
-                    placeholder="e.g., 10GB, unlimited"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="maxApiCalls">Max API Calls</Label>
-                  <Input
-                    id="maxApiCalls"
-                    type="number"
-                    value={formData.maxApiCalls}
-                    onChange={(e) =>
-                      setFormData({ ...formData, maxApiCalls: e.target.value })
-                    }
-                    placeholder="Unlimited"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="maxProjects">Max Projects</Label>
-                  <Input
-                    id="maxProjects"
-                    type="number"
-                    value={formData.maxProjects}
-                    onChange={(e) =>
-                      setFormData({ ...formData, maxProjects: e.target.value })
-                    }
-                    placeholder="Unlimited"
-                  />
-                </div>
-              </div>
+              {/* Removed: Max Users, Max Storage, Max API Calls, Max Projects */}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
