@@ -160,51 +160,13 @@ export function SubscriptionPlanManagement() {
         tags: formData.tags.split(",").map((t) => t.trim()).filter((t) => t),
       };
 
-      const result = await subscriptionPlanApi.create(planData);
-      setSubscriptionPlans([...subscriptionPlans, result.data]);
+      await subscriptionPlanApi.create(planData);
+      await fetchSubscriptionPlans();
       resetForm();
       setIsCreateDialogOpen(false);
     } catch (error) {
       console.error('Error creating subscription plan:', error);
-      // For demo purposes, add to local state
-      const newPlan: SubscriptionPlan = {
-        _id: Date.now().toString(),
-        name: formData.name,
-        description: formData.description,
-        planType: formData.planType,
-        pricing: {
-          monthly: parseFloat(formData.monthlyPrice),
-          yearly: parseFloat(formData.yearlyPrice),
-          currency: formData.currency,
-        },
-        features: formData.features
-          .split(",")
-          .map((f) => ({
-            name: f.trim(),
-            included: true,
-          }))
-          .filter((f) => f.name),
-        billingCycles: formData.billingCycles,
-        trialPeriod: {
-          enabled: formData.trialEnabled,
-          days: parseInt(formData.trialDays) || 0,
-        },
-        limits: {
-          maxUsers: formData.maxUsers ? parseInt(formData.maxUsers) : undefined,
-          maxStorage: formData.maxStorage || undefined,
-          maxApiCalls: formData.maxApiCalls ? parseInt(formData.maxApiCalls) : undefined,
-          maxProjects: formData.maxProjects ? parseInt(formData.maxProjects) : undefined,
-        },
-        isPopular: formData.isPopular,
-        isActive: true,
-        sortOrder: parseInt(formData.sortOrder) || 0,
-        tags: formData.tags.split(",").map((t) => t.trim()).filter((t) => t),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setSubscriptionPlans([...subscriptionPlans, newPlan]);
-      resetForm();
-      setIsCreateDialogOpen(false);
+      // Surface error but keep dialog open for correction
     }
   };
 
