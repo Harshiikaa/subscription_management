@@ -26,6 +26,7 @@ import {
 } from "@/lib/mock-data";
 import { Check, HardDrive, Headphones, Star, Users } from "lucide-react";
 import subscriptionPlanApi, { SubscriptionPlan } from "@/lib/api/subscription-plans";
+import subscriptionApi, { Subscription } from "@/lib/api/subscriptions";
 
 export default function SubscriptionsPage() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">(
@@ -38,6 +39,11 @@ export default function SubscriptionsPage() {
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [plansError, setPlansError] = useState<string | null>(null);
+  
+  // User subscriptions state
+  const [userSubscriptions, setUserSubscriptions] = useState<Subscription[]>([]);
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
+  const [subscriptionsError, setSubscriptionsError] = useState<string | null>(null);
 
   // Fetch subscription plans from API
   const fetchSubscriptionPlans = async () => {
@@ -120,11 +126,29 @@ export default function SubscriptionsPage() {
     }
   };
 
+  // Fetch user subscriptions from API
+  const fetchUserSubscriptions = async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      setSubscriptionsLoading(true);
+      setSubscriptionsError(null);
+      const result = await subscriptionApi.listMy({ limit: 50 });
+      setUserSubscriptions(result.data.items);
+    } catch (error) {
+      console.error('Error fetching user subscriptions:', error);
+      setSubscriptionsError('Failed to load subscriptions');
+    } finally {
+      setSubscriptionsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push("/login");
     } else if (isAuthenticated) {
       fetchSubscriptionPlans();
+      fetchUserSubscriptions();
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -132,7 +156,7 @@ export default function SubscriptionsPage() {
     return <div>Loading...</div>;
   }
 
-  const userSubscriptions = user ? getUserSubscriptions(user.id) : [];
+  // Use API data instead of mock data
   const activeSubscription = userSubscriptions.find(
     (sub) => sub.status === "active"
   );
@@ -406,20 +430,54 @@ export default function SubscriptionsPage() {
           </Alert>
         )}
 
-        {userSubscriptions.length > 0 ? (
+        {subscriptionsLoading ? (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">Loading subscriptions...</p>
+          </div>
+        ) : subscriptionsError ? (
+          <div className="text-center py-8">
+            <p className="text-destructive">{subscriptionsError}</p>
+            <Button 
+              variant="outline" 
+              onClick={fetchUserSubscriptions}
+              className="mt-2"
+            >
+              Retry
+            </Button>
+          </div>
+        ) : userSubscriptions.length > 0 ? (
           <div className="space-y-6">
             {userSubscriptions.map((subscription) => {
-              const product = getProductById(subscription.productId);
-              if (!product) return null;
+              // For API subscriptions, we need to handle both product and plan subscriptions
+              const product = subscription.productId ? getProductById(subscription.productId) : null;
+              const plan = subscription.subscriptionPlanId ? 
+                subscriptionPlans.find(p => p._id === subscription.subscriptionPlanId) : null;
+
+              // Convert API subscription to the format expected by SubscriptionCard
+              const subscriptionForCard = {
+                id: subscription._id,
+                userId: subscription.userId,
+                productId: subscription.productId || '',
+                status: subscription.status,
+                billingCycle: subscription.billingCycle,
+                startDate: subscription.startDate,
+                endDate: subscription.endDate || '',
+                nextBilling: subscription.nextBilling,
+                amount: subscription.amount,
+                paymentMethod: subscription.paymentMethod || 'card',
+                trialEndsAt: subscription.trialEndsAt,
+                cancelledAt: subscription.cancelledAt,
+                cancelReason: subscription.cancelReason,
+              };
 
               return (
                 <SubscriptionCard
-                  key={subscription.id}
-                  subscription={subscription}
+                  key={subscription._id}
+                  subscription={subscriptionForCard}
                   product={product}
-                  onManage={() => handleManageSubscription(subscription.id)}
-                  onUpgrade={() => handleUpgradeSubscription(subscription.id)}
-                  onCancel={() => handleCancelSubscription(subscription.id)}
+                  onManage={() => handleManageSubscription(subscription._id)}
+                  onUpgrade={() => handleUpgradeSubscription(subscription._id)}
+                  onCancel={() => handleCancelSubscription(subscription._id)}
                 />
               );
             })}

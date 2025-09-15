@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MainNav } from "@/components/navigation/main-nav"
 import { PaymentMethodCard } from "@/components/payment/payment-method-card"
 import { AddPaymentMethod } from "@/components/payment/add-payment-method"
@@ -14,7 +15,8 @@ import { InvoiceViewer } from "@/components/payment/invoice-viewer"
 import { ReminderPreferences } from "@/components/reminder/reminder-preferences"
 import { ManualReminderManager } from "@/components/reminder/manual-reminder-manager"
 import { getUserTransactions } from "@/lib/mock-data"
-import { CreditCard, Receipt, Settings, Download, Check, ArrowLeft } from "lucide-react"
+import { paymentApi, Payment } from "@/lib/api/payments"
+import { CreditCard, Receipt, Settings, Download, Check, ArrowLeft, Filter } from "lucide-react"
 import Link from "next/link"
 
 export default function BillingPage() {
@@ -45,6 +47,12 @@ export default function BillingPage() {
   const [planData, setPlanData] = useState<any>(null)
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null)
 
+  // Invoices state
+  const [invoices, setInvoices] = useState<Payment[]>([])
+  const [invoicesLoading, setInvoicesLoading] = useState(false)
+  const [invoicesError, setInvoicesError] = useState<string | null>(null)
+  const [invoiceFilter, setInvoiceFilter] = useState<string>("all") // all, completed, failed, pending, etc.
+
   const productId = searchParams.get("product")
   const planId = searchParams.get("plan")
   const billingCycle = (searchParams.get("billing") as "monthly" | "yearly") || "monthly"
@@ -54,6 +62,32 @@ export default function BillingPage() {
       router.push("/login")
     }
   }, [isAuthenticated, isLoading, router])
+
+  // Fetch invoices
+  const fetchInvoices = async (statusFilter?: string) => {
+    if (!isAuthenticated) return
+    
+    setInvoicesLoading(true)
+    setInvoicesError(null)
+    try {
+      const response = await paymentApi.getMyPayments({
+        status: statusFilter === "all" ? undefined : statusFilter,
+        limit: 50
+      })
+      setInvoices(response.data.items)
+    } catch (error) {
+      console.error("Failed to fetch invoices:", error)
+      setInvoicesError("Failed to load invoices")
+    } finally {
+      setInvoicesLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchInvoices()
+    }
+  }, [isAuthenticated])
 
   // Fetch product and plan data if coming from subscription flow
   useEffect(() => {
@@ -192,40 +226,49 @@ export default function BillingPage() {
     return <div>Loading...</div>
   }
 
-  const userTransactions = getUserTransactions(user.id)
-
-  // Mock invoices data
-  const invoices = userTransactions.map((transaction) => ({
-    id: transaction.id,
-    date: transaction.date,
-    amount: transaction.amount,
-    status:
-      transaction.status === "completed"
-        ? ("paid" as const)
-        : transaction.status === "pending"
-          ? ("pending" as const)
-          : ("overdue" as const),
-    description: transaction.description,
-    paymentMethod: transaction.paymentMethod,
-    billingAddress: {
-      name: user.name,
-      email: user.email,
-      address: "123 Main Street",
-      city: "Kathmandu",
-      country: "Nepal",
-    },
-    items: [
-      {
-        description: transaction.description,
-        quantity: 1,
-        unitPrice: transaction.amount,
-        total: transaction.amount,
+  // Convert Payment data to Invoice format for display
+  const formatInvoices = (payments: Payment[]) => {
+    return payments.map((payment) => ({
+      id: payment._id,
+      date: payment.paidAt || payment.createdAt,
+      amount: payment.amount,
+      status: payment.status === "completed" ? "paid" : 
+              payment.status === "pending" ? "pending" : 
+              payment.status === "failed" ? "failed" : 
+              payment.status === "cancelled" ? "cancelled" :
+              payment.status === "refunded" ? "refunded" : "pending",
+      description: payment.subscription?.subscriptionType === "product" 
+        ? `Product: ${payment.product?.name || "Unknown Product"}`
+        : payment.subscription?.subscriptionType === "plan"
+        ? `Plan: ${payment.subscription?.subscriptionType}`
+        : `Payment for ${payment.paymentType}`,
+      paymentMethod: payment.paymentMethod,
+      billingAddress: {
+        name: user.name,
+        email: user.email,
+        address: "123 Main Street",
+        city: "Kathmandu",
+        country: "Nepal",
       },
-    ],
-    subtotal: transaction.amount,
-    tax: 0,
-    total: transaction.amount,
-  }))
+      items: [
+        {
+          description: payment.subscription?.subscriptionType === "product" 
+            ? `Product: ${payment.product?.name || "Unknown Product"}`
+            : payment.subscription?.subscriptionType === "plan"
+            ? `Plan: ${payment.subscription?.subscriptionType}`
+            : `Payment for ${payment.paymentType}`,
+          quantity: 1,
+          unitPrice: payment.amount,
+          total: payment.amount,
+        },
+      ],
+      subtotal: payment.amount,
+      tax: 0,
+      total: payment.amount,
+    }))
+  }
+
+  const formattedInvoices = formatInvoices(invoices)
 
   const handleSetDefault = (id: string) => {
     setPaymentMethods((prev) =>
@@ -432,10 +475,29 @@ export default function BillingPage() {
                 <h2 className="text-xl font-semibold">Invoices</h2>
                 <p className="text-muted-foreground">View and download your invoices</p>
               </div>
-              <Button variant="outline">
-                <Download className="mr-2 h-4 w-4" />
-                Download All
-              </Button>
+              <div className="flex items-center gap-4">
+                <Select value={invoiceFilter} onValueChange={(value) => {
+                  setInvoiceFilter(value)
+                  fetchInvoices(value)
+                }}>
+                  <SelectTrigger className="w-[180px]">
+                    <Filter className="mr-2 h-4 w-4" />
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Payments</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="refunded">Refunded</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="outline">
+                  <Download className="mr-2 h-4 w-4" />
+                  Download All
+                </Button>
+              </div>
             </div>
 
             <Card>
@@ -446,9 +508,24 @@ export default function BillingPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {invoices.length > 0 ? (
+                {invoicesLoading ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Loading invoices...</p>
+                  </div>
+                ) : invoicesError ? (
+                  <div className="text-center py-8">
+                    <p className="text-destructive">{invoicesError}</p>
+                    <Button 
+                      variant="outline" 
+                      onClick={fetchInvoices}
+                      className="mt-2"
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                ) : formattedInvoices.length > 0 ? (
                   <div className="space-y-4">
-                    {invoices.map((invoice) => (
+                    {formattedInvoices.map((invoice) => (
                       <div key={invoice.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
                           <div className="flex items-center gap-2">
@@ -459,7 +536,13 @@ export default function BillingPage() {
                                   ? "default"
                                   : invoice.status === "pending"
                                     ? "secondary"
-                                    : "destructive"
+                                    : invoice.status === "failed"
+                                      ? "destructive"
+                                      : invoice.status === "cancelled"
+                                        ? "outline"
+                                        : invoice.status === "refunded"
+                                          ? "secondary"
+                                          : "secondary"
                               }
                             >
                               {invoice.status}
@@ -472,7 +555,7 @@ export default function BillingPage() {
 
                         <div className="flex items-center gap-4">
                           <div className="text-right">
-                            <p className="font-semibold">${invoice.amount.toFixed(2)}</p>
+                            <p className="font-semibold">{invoice.amount.toFixed(2)} {invoices[0]?.currency || 'USD'}</p>
                             <p className="text-sm text-muted-foreground">{invoice.paymentMethod}</p>
                           </div>
                           <InvoiceViewer invoice={invoice} />

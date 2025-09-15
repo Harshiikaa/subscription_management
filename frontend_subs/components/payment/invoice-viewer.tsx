@@ -11,7 +11,7 @@ interface Invoice {
   id: string
   date: string
   amount: number
-  status: "paid" | "pending" | "overdue"
+  status: "paid" | "pending" | "overdue" | "failed" | "cancelled" | "refunded"
   description: string
   paymentMethod: string
   billingAddress: {

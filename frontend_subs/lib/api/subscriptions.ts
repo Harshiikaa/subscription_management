@@ -146,8 +146,8 @@ export const subscriptionApi = {
 
     const queryString = searchParams.toString();
     const endpoint = queryString
-      ? `/subscriptions/my?${queryString}`
-      : "/subscriptions/my";
+      ? `/subscriptions/me?${queryString}`
+      : "/subscriptions/me";
 
     return apiRequest<ListResponse>(endpoint);
   },
