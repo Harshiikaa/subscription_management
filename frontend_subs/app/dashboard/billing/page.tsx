@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { MainNav } from "@/components/navigation/main-nav"
 import { PaymentMethodCard } from "@/components/payment/payment-method-card"
 import { AddPaymentMethod } from "@/components/payment/add-payment-method"
@@ -17,9 +19,11 @@ import { paymentApi, Payment } from "@/lib/api/payments"
 import { subscriptionApi, Subscription } from "@/lib/api/subscriptions"
 import { CreditCard, Receipt, Settings, Download, Check, ArrowLeft, Filter, Calendar } from "lucide-react"
 import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
 
 export default function BillingPage() {
   const { user, isAuthenticated, isLoading } = useAuth()
+  const { toast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [paymentMethods, setPaymentMethods] = useState([
@@ -57,6 +61,10 @@ export default function BillingPage() {
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(false)
   const [subscriptionsError, setSubscriptionsError] = useState<string | null>(null)
   const [subscriptionFilter, setSubscriptionFilter] = useState<string>("all") // all, active, inactive, cancelled, expired, trial
+  const [reminderDaysById, setReminderDaysById] = useState<Record<string, number>>({})
+  const [savingReminderId, setSavingReminderId] = useState<string | null>(null)
+  const [reminderDialogId, setReminderDialogId] = useState<string | null>(null)
+  const [tempReminderDays, setTempReminderDays] = useState<number>(5)
 
   const productId = searchParams.get("product")
   const planId = searchParams.get("plan")
@@ -107,6 +115,32 @@ export default function BillingPage() {
     } finally {
       setSubscriptionsLoading(false)
     }
+  }
+
+  const handleSaveReminder = async (subscriptionId: string, daysArg?: number) => {
+    if (!isAuthenticated) return
+    const days = daysArg ?? reminderDaysById[subscriptionId] ?? 5
+    setSavingReminderId(subscriptionId)
+    try {
+      await subscriptionApi.setReminder(subscriptionId, days)
+      const sub = subscriptions.find(s => s._id === subscriptionId)
+      let scheduledMsg = ""
+      if (sub?.endDate) {
+        const d = new Date(sub.endDate)
+        d.setDate(d.getDate() - days)
+        scheduledMsg = ` (scheduled for ${d.toLocaleDateString()})`
+      }
+      toast({ title: "Reminder saved", description: `We'll remind you ${days} day(s) before expiry${scheduledMsg}.` })
+    } catch (e: any) {
+      toast({ title: "Failed to save reminder", description: e?.message || "Please try again.", variant: "destructive" })
+    } finally {
+      setSavingReminderId(null)
+    }
+  }
+
+  const openReminderDialog = (subscriptionId: string) => {
+    setTempReminderDays(reminderDaysById[subscriptionId] ?? 5)
+    setReminderDialogId(subscriptionId)
   }
 
   useEffect(() => {
@@ -620,7 +654,7 @@ export default function BillingPage() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-6">
                           <div className="text-right">
                             <p className="font-semibold">{subscription.amount.toFixed(2)} {subscription.currency}</p>
                             <p className="text-sm text-muted-foreground">
@@ -630,7 +664,14 @@ export default function BillingPage() {
                                subscription.billingCycle === "weekly" ? "per week" : "per billing cycle"}
                             </p>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openReminderDialog(subscription._id)}
+                            >
+                              Set reminder
+                            </Button>
                             {subscription.status === "active" && (
                               <Button variant="outline" size="sm">
                                 Manage
@@ -652,6 +693,41 @@ export default function BillingPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {reminderDialogId && (
+            <Dialog open={!!reminderDialogId} onOpenChange={(open) => !open && setReminderDialogId(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Set subscription reminder</DialogTitle>
+                  <DialogDescription>
+                    Choose how many days before expiry you want to receive a reminder.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    className="w-28"
+                    value={tempReminderDays}
+                    onChange={(e) => setTempReminderDays(Number(e.target.value))}
+                  />
+                  <span className="text-sm text-muted-foreground">day(s) before expiry</span>
+                </div>
+                <DialogFooter>
+                  <Button
+                    disabled={savingReminderId === reminderDialogId}
+                    onClick={async () => {
+                      setReminderDaysById(prev => ({ ...prev, [reminderDialogId!]: tempReminderDays }))
+                      await handleSaveReminder(reminderDialogId!, tempReminderDays)
+                      setReminderDialogId(null)
+                    }}
+                  >
+                    {savingReminderId === reminderDialogId ? "Saving..." : "Save"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
 
           <TabsContent value="invoices" className="space-y-6">
             <div className="flex items-center justify-between">

@@ -17,6 +17,7 @@ const {
   getSubscriptionsByType,
   getActiveSubscriptions,
   getExpiringSubscriptions,
+  setSubscriptionReminder,
 } = require("../controllers/subscriptionController");
 
 // User: create subscription from product
@@ -66,5 +67,8 @@ router.get("/expiring", authenticate, requireAdmin, getExpiringSubscriptions);
 router.get("/:subscriptionId", authenticate, getSubscription);
 router.post("/:subscriptionId/cancel", authenticate, cancelSubscription);
 router.post("/:subscriptionId/renew", authenticate, renewSubscription);
+
+// User: set reminder days for a subscription
+router.post("/:id/reminder", authenticate, setSubscriptionReminder);
 
 module.exports = router;

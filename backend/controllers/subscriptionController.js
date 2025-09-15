@@ -13,18 +13,21 @@ const {
   getSubscriptionsByTypeService,
   getActiveSubscriptionsByUserService,
   getExpiringSubscriptionsService,
+  setSubscriptionReminderService,
 } = require("../services/subscriptionService");
 
 // User creates subscription for a product
 exports.createFromProduct = async (req, res, next) => {
   try {
     const userId = req.user._id;
-    const { productId, billingCycle, paymentMethod } = req.body;
+    const { productId, billingCycle, paymentMethod, reminderDaysBefore } =
+      req.body;
     const sub = await createFromProductService({
       productId,
       userId,
       billingCycle,
       paymentMethod,
+      reminderDaysBefore,
     });
     return sendSuccess(res, sub, "Product subscription created", 201);
   } catch (error) {
@@ -36,12 +39,18 @@ exports.createFromProduct = async (req, res, next) => {
 exports.createFromPlan = async (req, res, next) => {
   try {
     const userId = req.user._id;
-    const { subscriptionPlanId, billingCycle, paymentMethod } = req.body;
+    const {
+      subscriptionPlanId,
+      billingCycle,
+      paymentMethod,
+      reminderDaysBefore,
+    } = req.body;
     const sub = await createFromPlanService({
       subscriptionPlanId,
       userId,
       billingCycle,
       paymentMethod,
+      reminderDaysBefore,
     });
     return sendSuccess(res, sub, "Plan subscription created", 201);
   } catch (error) {
@@ -54,6 +63,28 @@ exports.getSubscription = async (req, res, next) => {
   try {
     const sub = await getSubscriptionService(req.params.subscriptionId);
     return sendSuccess(res, sub, "Subscription fetched");
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Set reminder days for a subscription
+exports.setSubscriptionReminder = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { id } = req.params;
+    const { reminderDaysBefore } = req.body;
+    if (reminderDaysBefore == null || isNaN(reminderDaysBefore)) {
+      throw AppError.badRequest(
+        "reminderDaysBefore is required and must be a number"
+      );
+    }
+    const reminder = await setSubscriptionReminderService({
+      subscriptionId: id,
+      userId,
+      reminderDaysBefore: Number(reminderDaysBefore),
+    });
+    return sendSuccess(res, reminder, "Subscription reminder scheduled");
   } catch (error) {
     next(error);
   }

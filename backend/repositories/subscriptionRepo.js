@@ -1,4 +1,5 @@
 const Subscription = require("../models/subscription");
+const SubscriptionReminder = require("../models/subscriptionReminder");
 
 exports.createSubscriptionRepo = async (data) => {
   return await Subscription.create(data);
@@ -105,4 +106,37 @@ exports.getActiveSubscriptionsByUserRepo = async (userId) => {
 
 exports.getExpiringSubscriptionsRepo = async (days = 7) => {
   return await Subscription.findExpiring(days);
+};
+
+// Reminder repository helpers
+exports.upsertSubscriptionReminderRepo = async ({
+  subscriptionId,
+  userId,
+  reminderDaysBefore,
+  reminderDate,
+}) => {
+  const doc = await SubscriptionReminder.findOneAndUpdate(
+    { subscriptionId },
+    {
+      subscriptionId,
+      userId,
+      reminderDaysBefore,
+      reminderDate,
+      status: "scheduled",
+    },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+  return doc;
+};
+
+exports.markReminderSentRepo = async (subscriptionId) => {
+  return await SubscriptionReminder.findOneAndUpdate(
+    { subscriptionId },
+    { status: "sent", lastSentAt: new Date() },
+    { new: true }
+  );
+};
+
+exports.getReminderBySubscriptionRepo = async (subscriptionId) => {
+  return await SubscriptionReminder.findOne({ subscriptionId });
 };

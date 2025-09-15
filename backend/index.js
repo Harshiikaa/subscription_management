@@ -8,7 +8,8 @@ const subscriptionRoute = require("./routes/subscriptionRoute");
 const subscriptionPlanRoute = require("./routes/subscriptionPlanRoute");
 const paymentRoute = require("./routes/paymentRoute");
 const errorHandler = require("./middlewares/errorHandler");
-const agendaConfig = require("./configs/agenda");
+const { initAgenda } = require("./utils/agenda");
+const defineReminderJob = require("./jobs/reminderJob");
 
 const { seedMockProductsService } = require("./services/productService");
 const { seedMockPlansService } = require("./services/subscriptionPlanService");
@@ -64,9 +65,12 @@ app.use((req, res) => {
 
   // Initialize Agenda for cron jobs
   try {
-    await agendaConfig.initialize();
-    await agendaConfig.scheduleJobs();
-    console.log("✅ Agenda jobs scheduled");
+    const mongoUri =
+      process.env.MONGODB_URI ||
+      "mongodb://localhost:27017/subscription_management";
+    const agenda = await initAgenda(mongoUri);
+    defineReminderJob(agenda);
+    console.log("✅ Agenda initialized and reminder job registered");
   } catch (e) {
     console.error("⚠️ Failed to initialize Agenda:", e.message);
   }

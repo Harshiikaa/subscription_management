@@ -253,6 +253,17 @@ export const subscriptionApi = {
     });
   },
 
+  // Set reminder days for a subscription
+  setReminder: async (
+    id: string,
+    reminderDaysBefore: number
+  ): Promise<ApiResponse<any>> => {
+    return apiRequest<any>(`/subscriptions/${id}/reminder`, {
+      method: "POST",
+      body: JSON.stringify({ reminderDaysBefore }),
+    });
+  },
+
   // Get subscriptions by product
   getByProduct: async (
     productId: string

@@ -134,7 +134,8 @@ export default function SubscriptionsPage() {
       setSubscriptionsLoading(true);
       setSubscriptionsError(null);
       const result = await subscriptionApi.listMy({ limit: 50 });
-      setUserSubscriptions(result.data.items);
+      // API returns an array in data
+      setUserSubscriptions(result.data);
     } catch (error) {
       console.error('Error fetching user subscriptions:', error);
       setSubscriptionsError('Failed to load subscriptions');
@@ -152,9 +153,7 @@ export default function SubscriptionsPage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  // Note: avoid early return before all hooks are declared
 
   // Use API data instead of mock data
   const activeSubscription = userSubscriptions.find(
@@ -448,10 +447,21 @@ export default function SubscriptionsPage() {
         ) : userSubscriptions.length > 0 ? (
           <div className="space-y-6">
             {userSubscriptions.map((subscription) => {
-              // For API subscriptions, we need to handle both product and plan subscriptions
-              const product = subscription.productId ? getProductById(subscription.productId) : null;
-              const plan = subscription.subscriptionPlanId ? 
-                subscriptionPlans.find(p => p._id === subscription.subscriptionPlanId) : null;
+              // Handle both populated product object and plain id
+              const product = typeof (subscription as any).productId === 'object'
+                ? {
+                    id: (subscription as any).productId._id || (subscription as any).productId.id || '',
+                    name: (subscription as any).productId.name,
+                    description: (subscription as any).productId.description,
+                    features: (subscription as any).productId.features || [],
+                    price: (subscription as any).productId.price || { monthly: subscription.amount, yearly: subscription.amount * 12 },
+                    category: "basic" as const,
+                    maxUsers: (subscription as any).productId.maxUsers,
+                    storage: (subscription as any).productId.storage,
+                    support: (subscription as any).productId.support,
+                    trialDays: (subscription as any).productId.trialDays,
+                  }
+                : (subscription.productId ? getProductById(subscription.productId as any) : null);
 
               // Convert API subscription to the format expected by SubscriptionCard
               const subscriptionForCard = {

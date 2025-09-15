@@ -21,7 +21,7 @@ import {
 
 interface SubscriptionCardProps {
   subscription: Subscription;
-  product: Product;
+  product?: Partial<Product> | null;
   onManage?: () => void;
   onUpgrade?: () => void;
   onCancel?: () => void;
@@ -50,9 +50,9 @@ export function SubscriptionCard({
           <div>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
-              {product.name}
+              {product?.name ?? "Subscription"}
             </CardTitle>
-            <CardDescription>{product.description}</CardDescription>
+            <CardDescription>{product?.description ?? ""}</CardDescription>
           </div>
           <Badge
             variant={
@@ -113,9 +113,9 @@ export function SubscriptionCard({
                 </span>
                 <span>
                   {Math.floor(
-                    (usagePercentage * (product.maxUsers || 100)) / 100
+                    (usagePercentage * ((product?.maxUsers as number) || 100)) / 100
                   )}{" "}
-                  / {product.maxUsers || "Unlimited"}
+                  / {product?.maxUsers ?? "Unlimited"}
                 </span>
               </div>
               <Progress value={usagePercentage} className="h-2" />
@@ -128,7 +128,7 @@ export function SubscriptionCard({
                   Storage
                 </span>
                 <span>
-                  {Math.floor(usagePercentage * 0.8)}% of {product.storage}
+                  {Math.floor(usagePercentage * 0.8)}% of {product?.storage ?? "N/A"}
                 </span>
               </div>
               <Progress value={usagePercentage * 0.8} className="h-2" />

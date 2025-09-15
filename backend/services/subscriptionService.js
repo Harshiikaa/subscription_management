@@ -2,8 +2,8 @@ const AppError = require("../utils/errors");
 const Subscription = require("../models/subscription");
 const Product = require("../models/product");
 const SubscriptionPlan = require("../models/subscriptionPlan");
-const ReminderPreferences = require("../models/reminderPreferences");
-const agendaConfig = require("../configs/agenda");
+const { getAgenda } = require("../utils/agenda");
+const SubscriptionReminder = require("../models/subscriptionReminder");
 const {
   createSubscriptionRepo,
   getSubscriptionByIdRepo,
@@ -20,46 +20,38 @@ const {
   getExpiringSubscriptionsRepo,
 } = require("../repositories/subscriptionRepo");
 
-// Helper function to schedule reminder for subscription
-const scheduleSubscriptionReminder = async (subscription) => {
-  try {
-    // Get user's reminder preferences
-    const preferences = await ReminderPreferences.getUserPreferences(
-      subscription.userId
-    );
+// Helper function to schedule reminder for subscription with explicit reminderDaysBefore
+const scheduleSubscriptionReminder = async (
+  subscription,
+  reminderDaysBefore
+) => {
+  const agenda = getAgenda();
+  const endDate = new Date(subscription.endDate);
+  const reminderDate = new Date(endDate);
+  reminderDate.setDate(reminderDate.getDate() - (reminderDaysBefore || 5));
 
-    if (!preferences || !preferences.subscriptionExpiryReminder.enabled) {
-      console.log(`Reminder not enabled for user ${subscription.userId}`);
-      return;
-    }
-
-    // Calculate reminder date
-    const reminderDate = new Date(subscription.endDate);
-    reminderDate.setDate(
-      reminderDate.getDate() -
-        preferences.subscriptionExpiryReminder.daysBeforeExpiry
+  if (reminderDate <= new Date()) {
+    console.log(
+      `Reminder date ${reminderDate} is in the past, skipping for subscription ${subscription._id}`
     );
-
-    // Only schedule if reminder date is in the future
-    if (reminderDate > new Date()) {
-      await agendaConfig.scheduleSubscriptionReminder(
-        subscription._id,
-        reminderDate
-      );
-      console.log(
-        `✅ Scheduled reminder for subscription ${subscription._id} at ${reminderDate}`
-      );
-    } else {
-      console.log(
-        `Reminder date ${reminderDate} is in the past, skipping for subscription ${subscription._id}`
-      );
-    }
-  } catch (error) {
-    console.error(
-      `Error scheduling reminder for subscription ${subscription._id}:`,
-      error
-    );
+    return null;
   }
+
+  await agenda.schedule(reminderDate, "send-subscription-reminder", {
+    subscriptionId: subscription._id,
+  });
+
+  return await SubscriptionReminder.findOneAndUpdate(
+    { subscriptionId: subscription._id },
+    {
+      subscriptionId: subscription._id,
+      userId: subscription.userId,
+      reminderDaysBefore: reminderDaysBefore || 5,
+      reminderDate,
+      status: "scheduled",
+    },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
 };
 
 exports.createFromProductService = async ({
@@ -67,6 +59,7 @@ exports.createFromProductService = async ({
   userId,
   billingCycle,
   paymentMethod,
+  reminderDaysBefore,
 }) => {
   try {
     const subscription = await createFromProductRepo(
@@ -77,7 +70,7 @@ exports.createFromProductService = async ({
     );
 
     // Schedule reminder for the new subscription
-    await scheduleSubscriptionReminder(subscription);
+    await scheduleSubscriptionReminder(subscription, reminderDaysBefore);
 
     return subscription;
   } catch (error) {
@@ -99,6 +92,7 @@ exports.createFromPlanService = async ({
   userId,
   billingCycle,
   paymentMethod,
+  reminderDaysBefore,
 }) => {
   try {
     const subscription = await createFromPlanRepo(
@@ -109,7 +103,7 @@ exports.createFromPlanService = async ({
     );
 
     // Schedule reminder for the new subscription
-    await scheduleSubscriptionReminder(subscription);
+    await scheduleSubscriptionReminder(subscription, reminderDaysBefore);
 
     return subscription;
   } catch (error) {
@@ -129,14 +123,18 @@ exports.createFromPlanService = async ({
 exports.getSubscriptionService = async (id) => {
   const sub = await getSubscriptionByIdRepo(id);
   if (!sub) throw AppError.notFound("Subscription not found");
-  return sub;
+  return {
+    ...sub.toObject(),
+    expiryDate: sub.endDate,
+  };
 };
 
 exports.listMySubscriptionsService = async (
   userId,
   subscriptionType = null
 ) => {
-  return await listUserSubscriptionsRepo(userId, subscriptionType);
+  const items = await listUserSubscriptionsRepo(userId, subscriptionType);
+  return items.map((s) => ({ ...s.toObject(), expiryDate: s.endDate }));
 };
 
 exports.listAllSubscriptionsService = async (query) => {
@@ -173,4 +171,23 @@ exports.renewSubscriptionService = async (id) => {
   const sub = await renewSubscriptionRepo(id);
   if (!sub) throw AppError.notFound("Subscription not found");
   return sub;
+};
+
+// Public API: set reminder by days and (re)schedule job
+exports.setSubscriptionReminderService = async ({
+  subscriptionId,
+  userId,
+  reminderDaysBefore,
+}) => {
+  const sub = await getSubscriptionByIdRepo(subscriptionId);
+  if (!sub) throw AppError.notFound("Subscription not found");
+  const subOwnerId =
+    sub?.userId && typeof sub.userId === "object" && sub.userId._id
+      ? sub.userId._id
+      : sub.userId;
+  if (String(subOwnerId) !== String(userId)) {
+    throw AppError.forbidden("You do not own this subscription");
+  }
+  const reminder = await scheduleSubscriptionReminder(sub, reminderDaysBefore);
+  return reminder;
 };
