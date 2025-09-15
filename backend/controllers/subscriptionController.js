@@ -73,7 +73,7 @@ exports.setSubscriptionReminder = async (req, res, next) => {
   try {
     const userId = req.user._id;
     const { id } = req.params;
-    const { reminderDaysBefore } = req.body;
+    const { reminderDaysBefore, testMinutesFromNow } = req.body;
     if (reminderDaysBefore == null || isNaN(reminderDaysBefore)) {
       throw AppError.badRequest(
         "reminderDaysBefore is required and must be a number"
@@ -83,6 +83,8 @@ exports.setSubscriptionReminder = async (req, res, next) => {
       subscriptionId: id,
       userId,
       reminderDaysBefore: Number(reminderDaysBefore),
+      testMinutesFromNow:
+        testMinutesFromNow != null ? Number(testMinutesFromNow) : undefined,
     });
     return sendSuccess(res, reminder, "Subscription reminder scheduled");
   } catch (error) {

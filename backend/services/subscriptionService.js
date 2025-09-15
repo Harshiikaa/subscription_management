@@ -23,12 +23,21 @@ const {
 // Helper function to schedule reminder for subscription with explicit reminderDaysBefore
 const scheduleSubscriptionReminder = async (
   subscription,
-  reminderDaysBefore
+  reminderDaysBefore,
+  testMinutesFromNow
 ) => {
   const agenda = getAgenda();
   const endDate = new Date(subscription.endDate);
-  const reminderDate = new Date(endDate);
+  let reminderDate = new Date(endDate);
   reminderDate.setDate(reminderDate.getDate() - (reminderDaysBefore || 5));
+
+  if (
+    process.env.NODE_ENV !== "production" &&
+    testMinutesFromNow &&
+    testMinutesFromNow > 0
+  ) {
+    reminderDate = new Date(Date.now() + testMinutesFromNow * 60 * 1000);
+  }
 
   if (reminderDate <= new Date()) {
     console.log(
@@ -178,6 +187,7 @@ exports.setSubscriptionReminderService = async ({
   subscriptionId,
   userId,
   reminderDaysBefore,
+  testMinutesFromNow,
 }) => {
   const sub = await getSubscriptionByIdRepo(subscriptionId);
   if (!sub) throw AppError.notFound("Subscription not found");
@@ -188,6 +198,10 @@ exports.setSubscriptionReminderService = async ({
   if (String(subOwnerId) !== String(userId)) {
     throw AppError.forbidden("You do not own this subscription");
   }
-  const reminder = await scheduleSubscriptionReminder(sub, reminderDaysBefore);
+  const reminder = await scheduleSubscriptionReminder(
+    sub,
+    reminderDaysBefore,
+    testMinutesFromNow
+  );
   return reminder;
 };

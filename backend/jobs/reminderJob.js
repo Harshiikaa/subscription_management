@@ -1,5 +1,6 @@
 const { markReminderSentRepo } = require("../repositories/subscriptionRepo");
 const Subscription = require("../models/subscription");
+const { createNotificationRepo } = require("../repositories/notificationRepo");
 
 module.exports = (agenda) => {
   agenda.define("send-subscription-reminder", async (job) => {
@@ -11,10 +12,29 @@ module.exports = (agenda) => {
     );
     if (!subscription) return;
 
-    // Replace with real email logic if needed
-    console.log(
-      `Reminder: Subscription ${subscription._id} for user ${subscription.userId?.email} is expiring on ${subscription.endDate}`
-    );
+    // Create in-app notification instead of email
+    const title = "Subscription expiring soon";
+    const message = `Your subscription for ${
+      subscription.productId?.name ||
+      subscription.subscriptionPlanId?.name ||
+      "a plan"
+    } expires on ${new Date(subscription.endDate).toLocaleString()}.`;
+    await createNotificationRepo({
+      userId: subscription.userId?._id || subscription.userId,
+      type: "subscription_reminder",
+      title,
+      message,
+      metadata: {
+        subscriptionId: subscription._id,
+        productId:
+          subscription.productId?._id || subscription.productId || null,
+        subscriptionPlanId:
+          subscription.subscriptionPlanId?._id ||
+          subscription.subscriptionPlanId ||
+          null,
+        endDate: subscription.endDate,
+      },
+    });
 
     await markReminderSentRepo(subscription._id);
   });
