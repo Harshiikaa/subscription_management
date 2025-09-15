@@ -7,8 +7,6 @@ const productRoute = require("./routes/productRoute");
 const subscriptionRoute = require("./routes/subscriptionRoute");
 const subscriptionPlanRoute = require("./routes/subscriptionPlanRoute");
 const paymentRoute = require("./routes/paymentRoute");
-const reminderRoute = require("./routes/reminderRoute");
-const manualReminderRoute = require("./routes/manualReminderRoute");
 const errorHandler = require("./middlewares/errorHandler");
 const agendaConfig = require("./configs/agenda");
 
@@ -32,8 +30,6 @@ app.use("/api/products", productRoute);
 app.use("/api/subscriptions", subscriptionRoute);
 app.use("/api/subscription-plans", subscriptionPlanRoute);
 app.use("/api/payments", paymentRoute);
-app.use("/api/reminders", reminderRoute);
-app.use("/api/manual-reminders", manualReminderRoute);
 
 // Basic route
 app.get("/", (req, res) => {

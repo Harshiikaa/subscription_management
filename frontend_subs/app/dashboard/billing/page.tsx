@@ -12,8 +12,6 @@ import { MainNav } from "@/components/navigation/main-nav"
 import { PaymentMethodCard } from "@/components/payment/payment-method-card"
 import { AddPaymentMethod } from "@/components/payment/add-payment-method"
 import { InvoiceViewer } from "@/components/payment/invoice-viewer"
-import { ReminderPreferences } from "@/components/reminder/reminder-preferences"
-import { ManualReminderManager } from "@/components/reminder/manual-reminder-manager"
 import { getUserTransactions } from "@/lib/mock-data"
 import { paymentApi, Payment } from "@/lib/api/payments"
 import { subscriptionApi, Subscription } from "@/lib/api/subscriptions"
@@ -400,13 +398,11 @@ export default function BillingPage() {
         )}
 
         <Tabs defaultValue="payment-methods" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="payment-methods">Payment Methods</TabsTrigger>
             <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
             <TabsTrigger value="invoices">Invoices</TabsTrigger>
             <TabsTrigger value="billing-info">Billing Info</TabsTrigger>
-            <TabsTrigger value="reminders">Auto Reminders</TabsTrigger>
-            <TabsTrigger value="manual-reminders">Manual Reminders</TabsTrigger>
           </TabsList>
 
           <TabsContent value="payment-methods" className="space-y-6">
@@ -842,17 +838,6 @@ export default function BillingPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="reminders" className="space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold">Automatic Reminder Preferences</h2>
-              <p className="text-muted-foreground">Configure when and how you want to be reminded about subscription expiry</p>
-            </div>
-            <ReminderPreferences />
-          </TabsContent>
-
-          <TabsContent value="manual-reminders" className="space-y-6">
-            <ManualReminderManager />
-          </TabsContent>
         </Tabs>
       </div>
     </div>
